@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { clearState, defaultState } from '../storage/storage';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'HKD', 'SGD', 'AUD', 'CAD'];
@@ -52,7 +53,8 @@ function SettingRow({
 
 export default function SettingsScreen() {
   const { state, dispatch } = useApp();
-  const { currency, categories, aiProvider, aiKey } = state;
+  const t = useTranslation();
+  const { currency, categories, aiProvider, aiKey, language } = state;
 
   const [catModalVisible, setCatModalVisible] = useState(false);
   const [newCat, setNewCat] = useState('');
@@ -63,12 +65,12 @@ export default function SettingsScreen() {
 
   function handleClearData() {
     Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all transactions, cards, and settings. This action cannot be undone.',
+      t('clearAllData'),
+      t('clearAllDataConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear All',
+          text: t('clearAll'),
           style: 'destructive',
           onPress: async () => {
             await clearState();
@@ -83,7 +85,7 @@ export default function SettingsScreen() {
     const cat = newCat.trim();
     if (!cat) return;
     if (categories.includes(cat)) {
-      Alert.alert('Already exists');
+      Alert.alert(t('alreadyExists'));
       return;
     }
     dispatch({ type: 'ADD_CATEGORY', payload: cat });
@@ -91,15 +93,15 @@ export default function SettingsScreen() {
   }
 
   function handleDeleteCategory(cat: string) {
-    Alert.alert('Delete category', `Remove "${cat}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => dispatch({ type: 'DELETE_CATEGORY', payload: cat }) },
+    Alert.alert(t('deleteCategory'), t('removeCategoryPrompt')(cat), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_CATEGORY', payload: cat }) },
     ]);
   }
 
   function handleSaveApiKey() {
     dispatch({ type: 'SET_AI_SETTINGS', payload: { provider: aiProvider, apiKey: keyInput.trim() } });
-    Alert.alert('Saved', 'API key saved successfully.');
+    Alert.alert(t('saved'), t('apiKeySaved'));
   }
 
   function handleSelectProvider(id: string) {
@@ -109,11 +111,11 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.header}>Settings</Text>
+      <Text style={styles.header}>{t('settingsHeader')}</Text>
 
-      <Text style={styles.sectionTitle}>Preferences</Text>
+      <Text style={styles.sectionTitle}>{t('preferences')}</Text>
       <View style={styles.section}>
-        <Text style={{ padding: 16, paddingBottom: 8, fontSize: 13, color: '#636E72' }}>Currency</Text>
+        <Text style={{ padding: 16, paddingBottom: 8, fontSize: 13, color: '#636E72' }}>{t('currencyLabel')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencyRow} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingBottom: 12 }}>
           {CURRENCIES.map(c => (
             <TouchableOpacity
@@ -127,19 +129,36 @@ export default function SettingsScreen() {
         </ScrollView>
       </View>
 
-      <Text style={styles.sectionTitle}>Categories</Text>
+      <Text style={styles.sectionTitle}>{t('categoriesLabel')}</Text>
       <View style={styles.section}>
         <SettingRow
           icon="pricetags-outline"
-          label="Manage Categories"
-          value={`${categories.length} categories`}
+          label={t('manageCategories')}
+          value={t('categoriesCount')(categories.length)}
           onPress={() => setCatModalVisible(true)}
         />
       </View>
 
-      <Text style={styles.sectionTitle}>AI Assistant</Text>
+      <Text style={styles.sectionTitle}>{t('languageLabel')}</Text>
       <View style={styles.section}>
-        <Text style={styles.aiSubLabel}>Provider</Text>
+        <View style={{ paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', gap: 8 }}>
+          {[{ id: 'en', label: 'English' }, { id: 'zh', label: '中文' }].map(lang => (
+            <TouchableOpacity
+              key={lang.id}
+              style={[styles.currencyChip, language === lang.id && styles.currencyChipActive]}
+              onPress={() => dispatch({ type: 'SET_LANGUAGE', payload: lang.id })}
+            >
+              <Text style={[styles.currencyChipText, language === lang.id && styles.currencyChipTextActive]}>
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>{t('aiAssistant')}</Text>
+      <View style={styles.section}>
+        <Text style={styles.aiSubLabel}>{t('providerLabel')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.providerRow}>
           {AI_PROVIDERS.map(p => (
             <TouchableOpacity
@@ -154,11 +173,11 @@ export default function SettingsScreen() {
           ))}
         </ScrollView>
 
-        <Text style={styles.aiSubLabel}>API Key</Text>
+        <Text style={styles.aiSubLabel}>{t('apiKeyLabel')}</Text>
         <View style={styles.apiKeyRow}>
           <TextInput
             style={styles.apiKeyInput}
-            placeholder="Paste your API key here"
+            placeholder={t('pasteApiKey')}
             value={keyInput}
             onChangeText={setKeyInput}
             secureTextEntry={!showKey}
@@ -173,36 +192,36 @@ export default function SettingsScreen() {
           Get your key at: {selectedProvider.hint}
         </Text>
         <TouchableOpacity style={styles.saveKeyBtn} onPress={handleSaveApiKey}>
-          <Text style={styles.saveKeyBtnText}>Save API Key</Text>
+          <Text style={styles.saveKeyBtnText}>{t('saveApiKey')}</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Data</Text>
+      <Text style={styles.sectionTitle}>{t('dataLabel')}</Text>
       <View style={styles.section}>
         <SettingRow
           icon="trash-outline"
-          label="Clear All Data"
+          label={t('clearAllData')}
           onPress={handleClearData}
           danger
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Coming Soon</Text>
+      <Text style={styles.sectionTitle}>{t('comingSoon')}</Text>
       <View style={styles.section}>
         <View style={styles.comingSoon}>
           <Ionicons name="cloud-outline" size={20} color="#B2BEC3" />
-          <Text style={styles.comingSoonText}>Cloud Sync & Login</Text>
-          <View style={styles.badge}><Text style={styles.badgeText}>Soon</Text></View>
+          <Text style={styles.comingSoonText}>{t('cloudSync')}</Text>
+          <View style={styles.badge}><Text style={styles.badgeText}>{t('soon')}</Text></View>
         </View>
       </View>
 
-      <Text style={styles.version}>Pockyt v1.0</Text>
+      <Text style={styles.version}>{t('version')}</Text>
 
       <Modal visible={catModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Categories</Text>
+              <Text style={styles.modalTitle}>{t('categoriesLabel')}</Text>
               <TouchableOpacity onPress={() => setCatModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#636E72" />
               </TouchableOpacity>
@@ -211,7 +230,7 @@ export default function SettingsScreen() {
             <View style={styles.addRow}>
               <TextInput
                 style={styles.catInput}
-                placeholder="New category name"
+                placeholder={t('newCategoryPlaceholder')}
                 value={newCat}
                 onChangeText={setNewCat}
               />

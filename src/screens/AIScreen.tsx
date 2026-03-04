@@ -15,15 +15,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { sendAIMessage, ChatMessage, AIProvider } from '../utils/ai';
+import { translations } from '../i18n/translations';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-
-const QUICK_QUESTIONS = [
-  'How much did I spend this month?',
-  'Where am I overspending?',
-  'Give me budgeting tips',
-  'Analyze my spending habits',
-];
 
 const PROVIDER_LABELS: Record<string, string> = {
   chatgpt: 'ChatGPT',
@@ -70,7 +65,10 @@ function buildContext(state: ReturnType<typeof useApp>['state']): string {
     )
     .join('\n') || 'No transactions yet';
 
-  return `You are Pockyt, a friendly AI financial assistant built into the Pockyt spending tracker app. Be concise, helpful, and encouraging. Use the user's actual spending data to give personalized advice. Keep responses short and clear.
+  const lang = (state.language === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
+  const langInstruction = translations[lang].aiLanguageInstruction;
+
+  return `You are Pockyt, a friendly AI financial assistant built into the Pockyt spending tracker app. Be concise, helpful, and encouraging. Use the user's actual spending data to give personalized advice. Keep responses short and clear. ${langInstruction}
 
 Current month: ${format(now, 'MMMM yyyy')}
 Currency: ${currency}
@@ -90,6 +88,7 @@ interface Props {
 
 export default function AIScreen({ visible, onClose }: Props) {
   const { state } = useApp();
+  const t = useTranslation();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -115,7 +114,7 @@ export default function AIScreen({ visible, onClose }: Props) {
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to get a response. Check your API key in Settings.');
+      Alert.alert('Error', err.message || t('aiError'));
     } finally {
       setLoading(false);
     }
@@ -131,7 +130,7 @@ export default function AIScreen({ visible, onClose }: Props) {
             </View>
             <View>
               <Text style={styles.headerTitle}>Pockyt AI</Text>
-              <Text style={styles.headerSub}>{PROVIDER_LABELS[provider]} · Your financial assistant</Text>
+              <Text style={styles.headerSub}>{PROVIDER_LABELS[provider]} · {t('yourFinancialAssistant')}</Text>
             </View>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -142,7 +141,7 @@ export default function AIScreen({ visible, onClose }: Props) {
         {!apiKey && (
           <View style={styles.warningBanner}>
             <Ionicons name="warning-outline" size={16} color="#E17055" />
-            <Text style={styles.warningText}>Add your API key in Settings → AI Assistant to chat</Text>
+            <Text style={styles.warningText}>{t('addApiKeyHint')}</Text>
           </View>
         )}
 
@@ -161,12 +160,10 @@ export default function AIScreen({ visible, onClose }: Props) {
                 <View style={styles.welcomeAvatar}>
                   <Ionicons name="sparkles" size={32} color="#6C5CE7" />
                 </View>
-                <Text style={styles.welcomeTitle}>Hi! I'm Pockyt AI</Text>
-                <Text style={styles.welcomeText}>
-                  I have access to your spending data and can help you understand your finances, find savings, and build better habits.
-                </Text>
+                <Text style={styles.welcomeTitle}>{t('hiImPockyt')}</Text>
+                <Text style={styles.welcomeText}>{t('welcomeText')}</Text>
                 <View style={styles.quickQuestions}>
-                  {QUICK_QUESTIONS.map(q => (
+                  {([t('quickQ1'), t('quickQ2'), t('quickQ3'), t('quickQ4')] as string[]).map(q => (
                     <TouchableOpacity key={q} style={styles.quickChip} onPress={() => sendMessage(q)}>
                       <Text style={styles.quickChipText}>{q}</Text>
                     </TouchableOpacity>
@@ -213,7 +210,7 @@ export default function AIScreen({ visible, onClose }: Props) {
           <View style={styles.inputBar}>
             <TextInput
               style={styles.textInput}
-              placeholder="Ask Pockyt AI anything..."
+              placeholder={t('askAnything')}
               value={input}
               onChangeText={setInput}
               multiline

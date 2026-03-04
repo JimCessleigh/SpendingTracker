@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../hooks/useTranslation';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import CameraScreen from '../screens/CameraScreen';
@@ -21,6 +22,7 @@ function CameraTabButton({ onPress, accessibilityState }: any) {
 }
 
 export default function BottomTabNavigator() {
+  const t = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -35,6 +37,7 @@ export default function BottomTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
+          tabBarLabel: t('home'),
           tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart-outline" size={size} color={color} />,
         }}
       />
@@ -42,7 +45,7 @@ export default function BottomTabNavigator() {
         name="Transactions"
         component={TransactionsScreen}
         options={{
-          tabBarLabel: 'Spending',
+          tabBarLabel: t('spending'),
           tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" size={size} color={color} />,
         }}
       />
@@ -58,6 +61,7 @@ export default function BottomTabNavigator() {
         name="Cards"
         component={CardsScreen}
         options={{
+          tabBarLabel: t('cards'),
           tabBarIcon: ({ color, size }) => <Ionicons name="card-outline" size={size} color={color} />,
         }}
       />
@@ -65,6 +69,7 @@ export default function BottomTabNavigator() {
         name="Settings"
         component={SettingsScreen}
         options={{
+          tabBarLabel: t('settings'),
           tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
         }}
       />

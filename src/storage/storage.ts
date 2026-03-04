@@ -11,6 +11,7 @@ export const defaultState: AppState = {
   categories: DEFAULT_CATEGORIES,
   aiProvider: 'chatgpt',
   aiKey: '',
+  language: 'en',
 };
 
 export async function loadState(): Promise<AppState> {

@@ -26,6 +26,7 @@ export interface AppState {
   categories: string[];
   aiProvider: string;
   aiKey: string;
+  language: string;
 }
 
 export type AppAction =
@@ -38,4 +39,5 @@ export type AppAction =
   | { type: 'ADD_CATEGORY'; payload: string }
   | { type: 'DELETE_CATEGORY'; payload: string }
   | { type: 'SET_AI_SETTINGS'; payload: { provider: string; apiKey: string } }
+  | { type: 'SET_LANGUAGE'; payload: string }
   | { type: 'LOAD_STATE'; payload: AppState };

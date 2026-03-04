@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Transaction } from '../types';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../constants/categories';
 import { format } from 'date-fns';
@@ -61,6 +62,7 @@ function TransactionItem({
 
 export default function TransactionsScreen() {
   const { state, dispatch } = useApp();
+  const t = useTranslation();
   const { transactions, currency, categories } = state;
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -78,11 +80,11 @@ export default function TransactionsScreen() {
   function handleAdd() {
     const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      Alert.alert(t('invalidAmount'), t('enterValidAmount'));
       return;
     }
     if (!category) {
-      Alert.alert('Select category', 'Please select a category.');
+      Alert.alert(t('selectCategory'), t('pleaseSelectCategory'));
       return;
     }
     const tx: Transaction = {
@@ -102,9 +104,9 @@ export default function TransactionsScreen() {
   }
 
   function handleDelete(id: string) {
-    Alert.alert('Delete', 'Remove this transaction?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => dispatch({ type: 'DELETE_TRANSACTION', payload: id }) },
+    Alert.alert(t('delete'), t('removeTransaction'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_TRANSACTION', payload: id }) },
     ]);
   }
 
@@ -116,7 +118,7 @@ export default function TransactionsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>Transactions</Text>
+        <Text style={styles.header}>{t('transactions')}</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
@@ -128,7 +130,7 @@ export default function TransactionsScreen() {
             style={[styles.filterChip, !filterMonth && styles.filterChipActive]}
             onPress={() => setFilterMonth('')}
           >
-            <Text style={[styles.filterChipText, !filterMonth && styles.filterChipTextActive]}>All</Text>
+            <Text style={[styles.filterChipText, !filterMonth && styles.filterChipTextActive]}>{t('all')}</Text>
           </TouchableOpacity>
           {months.map(m => (
             <TouchableOpacity
@@ -154,8 +156,8 @@ export default function TransactionsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="receipt-outline" size={48} color="#B2BEC3" />
-            <Text style={styles.emptyText}>No transactions yet</Text>
-            <Text style={styles.emptyHint}>Tap + to add your first transaction</Text>
+            <Text style={styles.emptyText}>{t('noTransactions')}</Text>
+            <Text style={styles.emptyHint}>{t('tapToAdd')}</Text>
           </View>
         }
       />
@@ -164,7 +166,7 @@ export default function TransactionsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Transaction</Text>
+              <Text style={styles.modalTitle}>{t('addTransaction')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#636E72" />
               </TouchableOpacity>
@@ -175,19 +177,19 @@ export default function TransactionsScreen() {
                 style={[styles.typeBtn, type === 'expense' && styles.typeBtnActive]}
                 onPress={() => setType('expense')}
               >
-                <Text style={[styles.typeBtnText, type === 'expense' && styles.typeBtnTextActive]}>Expense</Text>
+                <Text style={[styles.typeBtnText, type === 'expense' && styles.typeBtnTextActive]}>{t('expense')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.typeBtn, type === 'income' && styles.typeBtnIncomeActive]}
                 onPress={() => setType('income')}
               >
-                <Text style={[styles.typeBtnText, type === 'income' && styles.typeBtnTextActive]}>Income</Text>
+                <Text style={[styles.typeBtnText, type === 'income' && styles.typeBtnTextActive]}>{t('incomeType')}</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
               style={styles.input}
-              placeholder="Amount"
+              placeholder={t('amount')}
               keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
@@ -195,12 +197,12 @@ export default function TransactionsScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Note (optional)"
+              placeholder={t('noteOptional')}
               value={note}
               onChangeText={setNote}
             />
 
-            <Text style={styles.inputLabel}>Category</Text>
+            <Text style={styles.inputLabel}>{t('category')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
               {categories.map(cat => (
                 <TouchableOpacity
@@ -214,7 +216,7 @@ export default function TransactionsScreen() {
             </ScrollView>
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleAdd}>
-              <Text style={styles.saveBtnText}>Save Transaction</Text>
+              <Text style={styles.saveBtnText}>{t('saveTransaction')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

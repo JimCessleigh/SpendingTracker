@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Card } from '../types';
 import { CARD_COLORS } from '../constants/categories';
 
@@ -40,6 +41,7 @@ function formatDueDate(dueDate: string): string {
 }
 
 function CardItem({ card, onDelete }: { card: Card; onDelete: (id: string) => void }) {
+  const t = useTranslation();
   const days = daysUntilDue(card.dueDate);
   return (
     <View style={[styles.cardItem, { backgroundColor: card.color }]}>
@@ -52,9 +54,9 @@ function CardItem({ card, onDelete }: { card: Card; onDelete: (id: string) => vo
       <Text style={styles.cardNumber}>•••• •••• •••• {card.lastFour}</Text>
       <View style={styles.cardFooter}>
         <View>
-          <Text style={styles.cardDueLabel}>Payment Due</Text>
+          <Text style={styles.cardDueLabel}>{t('paymentDue')}</Text>
           <Text style={styles.cardDueText}>
-            {formatDueDate(card.dueDate)} · {days === 0 ? 'Today!' : `${days}d left`}
+            {formatDueDate(card.dueDate)} · {days === 0 ? t('todayDue') : `${days}${t('daysLeft')}`}
           </Text>
         </View>
         <View style={styles.cardChip}>
@@ -73,6 +75,7 @@ function CardItem({ card, onDelete }: { card: Card; onDelete: (id: string) => vo
 
 export default function CardsScreen() {
   const { state, dispatch } = useApp();
+  const t = useTranslation();
   const { cards } = state;
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -85,8 +88,8 @@ export default function CardsScreen() {
   const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
 
   function handleAdd() {
-    if (!name.trim()) { Alert.alert('Name required'); return; }
-    if (!/^\d{4}$/.test(lastFour)) { Alert.alert('Enter last 4 digits'); return; }
+    if (!name.trim()) { Alert.alert(t('nameRequired')); return; }
+    if (!/^\d{4}$/.test(lastFour)) { Alert.alert(t('enterLastFour')); return; }
 
     const card: Card = {
       id: generateId(),
@@ -104,16 +107,16 @@ export default function CardsScreen() {
   }
 
   function handleDelete(id: string) {
-    Alert.alert('Delete Card', 'Remove this card?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => dispatch({ type: 'DELETE_CARD', payload: id }) },
+    Alert.alert(t('deleteCard'), t('removeCard'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_CARD', payload: id }) },
     ]);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>My Cards</Text>
+        <Text style={styles.header}>{t('myCards')}</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
@@ -127,8 +130,8 @@ export default function CardsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="card-outline" size={56} color="#B2BEC3" />
-            <Text style={styles.emptyText}>No cards yet</Text>
-            <Text style={styles.emptyHint}>Add your credit cards to track due dates</Text>
+            <Text style={styles.emptyText}>{t('noCardsYet')}</Text>
+            <Text style={styles.emptyHint}>{t('addCardsHint')}</Text>
           </View>
         }
       />
@@ -137,27 +140,27 @@ export default function CardsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Card</Text>
+              <Text style={styles.modalTitle}>{t('addCard')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#636E72" />
               </TouchableOpacity>
             </View>
 
             <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <TextInput style={styles.input} placeholder="Card name (e.g. Chase Sapphire)" value={name} onChangeText={setName} />
+              <TextInput style={styles.input} placeholder={t('cardNamePlaceholder')} value={name} onChangeText={setName} />
               <TextInput
                 style={styles.input}
-                placeholder="Last 4 digits"
+                placeholder={t('lastFourDigits')}
                 keyboardType="number-pad"
                 maxLength={4}
                 value={lastFour}
                 onChangeText={setLastFour}
               />
 
-              <Text style={styles.inputLabel}>Payment Due Date</Text>
+              <Text style={styles.inputLabel}>{t('paymentDueDate')}</Text>
               <View style={styles.pickerRow}>
                 <View style={styles.pickerCol}>
-                  <Text style={styles.pickerHeader}>Month</Text>
+                  <Text style={styles.pickerHeader}>{t('month')}</Text>
                   <Picker
                     selectedValue={selectedMonth}
                     onValueChange={(v) => setSelectedMonth(v)}
@@ -171,7 +174,7 @@ export default function CardsScreen() {
                 </View>
                 <View style={styles.pickerDivider} />
                 <View style={styles.pickerCol}>
-                  <Text style={styles.pickerHeader}>Day</Text>
+                  <Text style={styles.pickerHeader}>{t('day')}</Text>
                   <Picker
                     selectedValue={selectedDay}
                     onValueChange={(v) => setSelectedDay(v)}
@@ -187,14 +190,14 @@ export default function CardsScreen() {
 
               <TextInput
                 style={[styles.input, styles.inputMulti]}
-                placeholder="Benefits / rewards (optional)"
+                placeholder={t('benefitsPlaceholder')}
                 multiline
                 value={benefits}
                 onChangeText={setBenefits}
                 onFocus={() => setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100)}
               />
 
-              <Text style={styles.inputLabel}>Card color</Text>
+              <Text style={styles.inputLabel}>{t('cardColor')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorRow}>
                 {CARD_COLORS.map(c => (
                   <TouchableOpacity
@@ -206,7 +209,7 @@ export default function CardsScreen() {
               </ScrollView>
 
               <TouchableOpacity style={styles.saveBtn} onPress={handleAdd}>
-                <Text style={styles.saveBtnText}>Add Card</Text>
+                <Text style={styles.saveBtnText}>{t('addCard')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

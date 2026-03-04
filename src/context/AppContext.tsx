@@ -29,6 +29,8 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, categories: state.categories.filter(c => c !== action.payload) };
     case 'SET_AI_SETTINGS':
       return { ...state, aiProvider: action.payload.provider, aiKey: action.payload.apiKey };
+    case 'SET_LANGUAGE':
+      return { ...state, language: action.payload };
     default:
       return state;
   }

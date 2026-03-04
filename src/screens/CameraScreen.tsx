@@ -12,28 +12,30 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../hooks/useTranslation';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const THUMB_SIZE = (SCREEN_WIDTH - 48) / 3;
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
+  const t = useTranslation();
   const [cameraVisible, setCameraVisible] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const cameraRef = useRef<CameraView>(null);
 
   if (!permission) {
-    return <View style={styles.center}><Text>Loading camera...</Text></View>;
+    return <View style={styles.center}><Text>{t('loadingCamera')}</Text></View>;
   }
 
   if (!permission.granted) {
     return (
       <View style={styles.center}>
         <Ionicons name="camera-outline" size={64} color="#B2BEC3" />
-        <Text style={styles.permTitle}>Camera Access Needed</Text>
-        <Text style={styles.permText}>Grant camera permission to capture receipts.</Text>
+        <Text style={styles.permTitle}>{t('cameraAccessNeeded')}</Text>
+        <Text style={styles.permText}>{t('grantCameraPermission')}</Text>
         <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
-          <Text style={styles.permBtnText}>Grant Permission</Text>
+          <Text style={styles.permBtnText}>{t('grantPermission')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -53,9 +55,9 @@ export default function CameraScreen() {
   }
 
   function deletePhoto(uri: string) {
-    Alert.alert('Delete', 'Remove this receipt photo?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => setPhotos(prev => prev.filter(p => p !== uri)) },
+    Alert.alert(t('deletePhoto'), t('removePhotoPrompt'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('deletePhoto'), style: 'destructive', onPress: () => setPhotos(prev => prev.filter(p => p !== uri)) },
     ]);
   }
 
@@ -80,21 +82,21 @@ export default function CameraScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>Receipts</Text>
+        <Text style={styles.header}>{t('receiptsHeader')}</Text>
         <TouchableOpacity style={styles.captureBtn} onPress={() => setCameraVisible(true)}>
           <Ionicons name="camera" size={22} color="#fff" />
-          <Text style={styles.captureBtnText}>Scan Receipt</Text>
+          <Text style={styles.captureBtnText}>{t('scanReceipt')}</Text>
         </TouchableOpacity>
       </View>
 
       {photos.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="receipt-outline" size={64} color="#B2BEC3" />
-          <Text style={styles.emptyText}>No receipts yet</Text>
-          <Text style={styles.emptyHint}>Tap "Scan Receipt" to capture a receipt photo</Text>
+          <Text style={styles.emptyText}>{t('noReceiptsYet')}</Text>
+          <Text style={styles.emptyHint}>{t('scanReceiptHint')}</Text>
           <TouchableOpacity style={styles.captureBtn2} onPress={() => setCameraVisible(true)}>
             <Ionicons name="camera-outline" size={20} color="#6C5CE7" />
-            <Text style={styles.captureBtn2Text}>Open Camera</Text>
+            <Text style={styles.captureBtn2Text}>{t('openCamera')}</Text>
           </TouchableOpacity>
         </View>
       ) : (

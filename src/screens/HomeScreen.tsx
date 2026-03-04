@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { CATEGORY_COLORS } from '../constants/categories';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths } from 'date-fns';
 
@@ -26,6 +27,7 @@ const chartConfig = {
 
 export default function HomeScreen() {
   const { state } = useApp();
+  const t = useTranslation();
   const { transactions, currency } = state;
 
   const now = new Date();
@@ -88,22 +90,22 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.header}>Overview</Text>
+      <Text style={styles.header}>{t('overview')}</Text>
       <Text style={styles.month}>{format(now, 'MMMM yyyy')}</Text>
 
       <View style={styles.summaryRow}>
         <View style={[styles.card, styles.incomeCard]}>
-          <Text style={styles.cardLabel}>Income</Text>
+          <Text style={styles.cardLabel}>{t('income')}</Text>
           <Text style={styles.cardAmount}>{fmt(totalIncome)}</Text>
         </View>
         <View style={[styles.card, styles.expenseCard]}>
-          <Text style={styles.cardLabel}>Expenses</Text>
+          <Text style={styles.cardLabel}>{t('expenses')}</Text>
           <Text style={styles.cardAmount}>{fmt(totalExpense)}</Text>
         </View>
       </View>
 
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Net Balance</Text>
+        <Text style={styles.balanceLabel}>{t('netBalance')}</Text>
         <Text style={[styles.balanceAmount, { color: balance >= 0 ? '#00B894' : '#D63031' }]}>
           {fmt(balance)}
         </Text>
@@ -111,7 +113,7 @@ export default function HomeScreen() {
 
       {pieData.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Spending by Category</Text>
+          <Text style={styles.sectionTitle}>{t('spendingByCategory')}</Text>
           <PieChart
             data={pieData}
             width={CHART_WIDTH}
@@ -126,7 +128,7 @@ export default function HomeScreen() {
       )}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Monthly Expenses (6 months)</Text>
+        <Text style={styles.sectionTitle}>{t('monthlyExpenses')}</Text>
         <BarChart
           data={barData}
           width={CHART_WIDTH}
@@ -142,8 +144,8 @@ export default function HomeScreen() {
 
       {transactions.length === 0 && (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>No transactions yet.</Text>
-          <Text style={styles.emptyHint}>Add your first transaction in the Transactions tab.</Text>
+          <Text style={styles.emptyText}>{t('noTransactionsYet')}</Text>
+          <Text style={styles.emptyHint}>{t('addFirstTransaction')}</Text>
         </View>
       )}
     </ScrollView>
