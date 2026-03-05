@@ -319,7 +319,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
-  header: { fontSize: 28, fontWeight: '700', color: '#2D3436' },
   month: { fontSize: 14, color: '#636E72', marginTop: 2 },
   periodToggle: {
     flexDirection: 'row',

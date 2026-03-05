@@ -66,6 +66,8 @@ export default function SettingsScreen() {
 
   const [catModalVisible, setCatModalVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+  const [aboutModalVisible, setAboutModalVisible] = useState(false);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emailSending, setEmailSending] = useState(false);
@@ -335,7 +337,79 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      <Text style={styles.sectionTitle}>{t('aboutLabel')}</Text>
+      <View style={styles.section}>
+        <SettingRow
+          icon="information-circle-outline"
+          label={t('aboutUs')}
+          onPress={() => setAboutModalVisible(true)}
+        />
+        <SettingRow
+          icon="shield-checkmark-outline"
+          label={t('privacyPolicy')}
+          onPress={() => setPrivacyModalVisible(true)}
+        />
+      </View>
+
       <Text style={styles.version}>{t('version')}</Text>
+
+      {/* About modal */}
+      <Modal visible={aboutModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('aboutUs')}</Text>
+              <TouchableOpacity onPress={() => setAboutModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#636E72" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.aboutContent}>
+              <View style={styles.aboutIconWrap}>
+                <Ionicons name="wallet" size={40} color="#6C5CE7" />
+              </View>
+              <Text style={styles.aboutTitle}>{t('aboutTitle')}</Text>
+              <Text style={styles.aboutVersion}>{t('aboutVersion')}</Text>
+              <Text style={styles.aboutDesc}>{t('aboutDesc')}</Text>
+              <Text style={styles.aboutBuiltWith}>{t('aboutBuiltWith')}</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Privacy Policy modal */}
+      <Modal visible={privacyModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('privacyPolicy')}</Text>
+              <TouchableOpacity onPress={() => setPrivacyModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#636E72" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.privacySection}>1. Information We Collect</Text>
+              <Text style={styles.privacyText}>Pockyt stores all your financial data (transactions, budgets, and settings) locally on your device. We do not collect or transmit your personal financial information to our servers.</Text>
+
+              <Text style={styles.privacySection}>2. AI Features</Text>
+              <Text style={styles.privacyText}>When you use AI features (receipt scanning or the AI assistant), your data is sent directly to your chosen AI provider (OpenAI, Google, Anthropic, or DeepSeek) using the API key you provide. We do not store or have access to these requests.</Text>
+
+              <Text style={styles.privacySection}>3. Camera & Photos</Text>
+              <Text style={styles.privacyText}>Receipt photos are stored locally on your device only. We do not upload your photos to any server.</Text>
+
+              <Text style={styles.privacySection}>4. Third-Party Services</Text>
+              <Text style={styles.privacyText}>AI processing is handled by the provider you select in Settings. Please review their respective privacy policies for details on how they handle your data.</Text>
+
+              <Text style={styles.privacySection}>5. Data Security</Text>
+              <Text style={styles.privacyText}>Your API keys are stored locally on your device and are never shared with us. You can clear all app data at any time from Settings → Data.</Text>
+
+              <Text style={styles.privacySection}>6. Contact</Text>
+              <Text style={styles.privacyText}>For questions about this privacy policy, please contact us at support@pockyt.app.</Text>
+
+              <Text style={styles.privacyUpdated}>Last updated: March 2026</Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Categories modal */}
       <Modal visible={catModalVisible} animationType="slide" transparent>
@@ -560,6 +634,23 @@ const styles = StyleSheet.create({
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#2D3436' },
+  aboutContent: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8 },
+  aboutIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: '#F0EEFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  aboutTitle: { fontSize: 24, fontWeight: '800', color: '#2D3436', marginBottom: 4 },
+  aboutVersion: { fontSize: 13, color: '#B2BEC3', marginBottom: 16 },
+  aboutDesc: { fontSize: 14, color: '#636E72', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
+  aboutBuiltWith: { fontSize: 12, color: '#B2BEC3', textAlign: 'center' },
+  privacySection: { fontSize: 14, fontWeight: '700', color: '#2D3436', marginTop: 16, marginBottom: 6 },
+  privacyText: { fontSize: 13, color: '#636E72', lineHeight: 20 },
+  privacyUpdated: { fontSize: 11, color: '#B2BEC3', marginTop: 24, marginBottom: 8, textAlign: 'center' },
   addRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   catInput: {
     flex: 1,

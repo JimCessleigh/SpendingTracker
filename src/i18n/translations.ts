@@ -97,6 +97,13 @@ export const translations = {
     removeCategoryPrompt: (cat: string) => `Remove "${cat}"?`,
     version: 'Pockyt v1.0',
     soon: 'Soon',
+    aboutLabel: 'About',
+    aboutUs: 'About Pockyt',
+    privacyPolicy: 'Privacy Policy',
+    aboutTitle: 'Pockyt',
+    aboutDesc: 'Pockyt is a smart spending tracker with AI-powered receipt scanning, financial insights, and a conversational AI assistant to help you manage your money effortlessly.',
+    aboutVersion: 'Version 1.0.0',
+    aboutBuiltWith: 'Built with ❤️ using React Native & Expo',
 
     // AI screen
     yourFinancialAssistant: 'Your financial assistant',
@@ -262,6 +269,13 @@ export const translations = {
     removeCategoryPrompt: (cat: string) => `删除"${cat}"？`,
     version: 'Pockyt v1.0',
     soon: '即将',
+    aboutLabel: '关于',
+    aboutUs: '关于 Pockyt',
+    privacyPolicy: '隐私政策',
+    aboutTitle: 'Pockyt',
+    aboutDesc: 'Pockyt 是一款智能消费追踪应用，具备 AI 驱动的收据扫描、财务洞察以及对话式 AI 助手，帮助您轻松管理资金。',
+    aboutVersion: '版本 1.0.0',
+    aboutBuiltWith: '使用 React Native & Expo 用 ❤️ 构建',
 
     // AI screen
     yourFinancialAssistant: '您的财务助手',
