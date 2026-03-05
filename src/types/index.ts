@@ -8,6 +8,7 @@ export interface Transaction {
   note: string;
   date: string; // ISO date string
   receiptUri?: string;
+  cardId?: string;
 }
 
 export interface Card {
@@ -17,6 +18,7 @@ export interface Card {
   dueDate: string; // "M-D" format e.g. "1-21" = January 21
   benefits: string;
   color: string;
+  reminderEnabled?: boolean;
 }
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
@@ -49,6 +51,7 @@ export type AppAction =
   | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
   | { type: 'ADD_CARD'; payload: Card }
   | { type: 'DELETE_CARD'; payload: string }
+  | { type: 'TOGGLE_CARD_REMINDER'; payload: string }
   | { type: 'SET_CURRENCY'; payload: string }
   | { type: 'ADD_CATEGORY'; payload: string }
   | { type: 'DELETE_CATEGORY'; payload: string }

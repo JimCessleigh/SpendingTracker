@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,12 @@ import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Card } from '../types';
 import { CARD_COLORS } from '../constants/categories';
+import {
+  setupNotificationChannel,
+  requestNotificationPermissions,
+  scheduleCardReminder,
+  cancelCardReminder,
+} from '../notifications/notifications';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -40,18 +46,44 @@ function formatDueDate(dueDate: string): string {
   return `${MONTHS[month - 1]} ${day}`;
 }
 
-function CardItem({ card, onDelete }: { card: Card; onDelete: (id: string) => void }) {
+function CardItem({
+  card,
+  spent,
+  currency,
+  onDelete,
+  onToggleReminder,
+}: {
+  card: Card;
+  spent: number;
+  currency: string;
+  onDelete: (id: string) => void;
+  onToggleReminder: (card: Card) => void;
+}) {
   const t = useTranslation();
   const days = daysUntilDue(card.dueDate);
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+
   return (
     <View style={[styles.cardItem, { backgroundColor: card.color }]}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardName}>{card.name}</Text>
-        <TouchableOpacity onPress={() => onDelete(card.id)}>
-          <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.7)" />
-        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <TouchableOpacity onPress={() => onToggleReminder(card)} style={styles.actionBtn}>
+            <Ionicons
+              name={card.reminderEnabled ? 'notifications' : 'notifications-outline'}
+              size={18}
+              color={card.reminderEnabled ? '#fff' : 'rgba(255,255,255,0.55)'}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onDelete(card.id)} style={styles.actionBtn}>
+            <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.55)" />
+          </TouchableOpacity>
+        </View>
       </View>
+
       <Text style={styles.cardNumber}>•••• •••• •••• {card.lastFour}</Text>
+
       <View style={styles.cardFooter}>
         <View>
           <Text style={styles.cardDueLabel}>{t('paymentDue')}</Text>
@@ -59,10 +91,14 @@ function CardItem({ card, onDelete }: { card: Card; onDelete: (id: string) => vo
             {formatDueDate(card.dueDate)} · {days === 0 ? t('todayDue') : `${days}${t('daysLeft')}`}
           </Text>
         </View>
-        <View style={styles.cardChip}>
-          <View style={styles.chipInner} />
-        </View>
+        {spent > 0 && (
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.cardDueLabel}>{t('cardSpent')}</Text>
+            <Text style={styles.cardDueText}>{fmt(spent)}</Text>
+          </View>
+        )}
       </View>
+
       {card.benefits ? (
         <View style={styles.benefitsRow}>
           <Ionicons name="gift-outline" size={13} color="rgba(255,255,255,0.8)" />
@@ -76,7 +112,7 @@ function CardItem({ card, onDelete }: { card: Card; onDelete: (id: string) => vo
 export default function CardsScreen() {
   const { state, dispatch } = useApp();
   const t = useTranslation();
-  const { cards } = state;
+  const { cards, transactions, currency } = state;
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -86,6 +122,36 @@ export default function CardsScreen() {
   const [selectedDay, setSelectedDay] = useState(1);
   const [benefits, setBenefits] = useState('');
   const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
+
+  useEffect(() => {
+    setupNotificationChannel();
+  }, []);
+
+  // Total spending per card (all time)
+  const cardSpending = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions
+      .filter(tx => tx.type === 'expense' && tx.cardId)
+      .forEach(tx => {
+        map[tx.cardId!] = (map[tx.cardId!] || 0) + tx.amount;
+      });
+    return map;
+  }, [transactions]);
+
+  async function handleToggleReminder(card: Card) {
+    const willEnable = !card.reminderEnabled;
+    if (willEnable) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert(t('billReminders'), t('notifPermissionDenied'));
+        return;
+      }
+      await scheduleCardReminder(card);
+    } else {
+      await cancelCardReminder(card.id);
+    }
+    dispatch({ type: 'TOGGLE_CARD_REMINDER', payload: card.id });
+  }
 
   function handleAdd() {
     if (!name.trim()) { Alert.alert(t('nameRequired')); return; }
@@ -109,7 +175,14 @@ export default function CardsScreen() {
   function handleDelete(id: string) {
     Alert.alert(t('deleteCard'), t('removeCard'), [
       { text: t('cancel'), style: 'cancel' },
-      { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_CARD', payload: id }) },
+      {
+        text: t('delete'),
+        style: 'destructive',
+        onPress: () => {
+          cancelCardReminder(id);
+          dispatch({ type: 'DELETE_CARD', payload: id });
+        },
+      },
     ]);
   }
 
@@ -125,7 +198,15 @@ export default function CardsScreen() {
       <FlatList
         data={cards}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => <CardItem card={item} onDelete={handleDelete} />}
+        renderItem={({ item }) => (
+          <CardItem
+            card={item}
+            spent={cardSpending[item.id] || 0}
+            currency={currency}
+            onDelete={handleDelete}
+            onToggleReminder={handleToggleReminder}
+          />
+        )}
         contentContainerStyle={cards.length === 0 ? styles.emptyContainer : { padding: 16, gap: 16 }}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -247,21 +328,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  cardName: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardName: { fontSize: 18, fontWeight: '700', color: '#fff', flex: 1 },
+  cardActions: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  actionBtn: { padding: 2 },
   cardNumber: { fontSize: 16, color: 'rgba(255,255,255,0.8)', letterSpacing: 2, marginBottom: 16 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   cardDueLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
   cardDueText: { fontSize: 14, color: '#fff', fontWeight: '600' },
-  cardChip: {
-    width: 36,
-    height: 26,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipInner: { width: 20, height: 16, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
   benefitsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

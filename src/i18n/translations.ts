@@ -137,6 +137,15 @@ export const translations = {
     exportCSV: 'Export to CSV',
     noDataToExport: 'No data to export',
 
+    // Cards & notifications
+    billReminders: 'Bill Reminders',
+    reminderEnabled: 'Reminder on',
+    reminderDisabled: 'Reminder off',
+    notifPermissionDenied: 'Please enable notifications in Settings to receive bill reminders.',
+    cardOptional: 'Link to Card (optional)',
+    noCard: 'None',
+    cardSpent: 'Spent',
+
     // Email export
     sendToEmail: 'Send to Email',
     enterEmail: 'Email address',
@@ -282,6 +291,15 @@ export const translations = {
     annualExpenses: '年度支出（12个月）',
     exportCSV: '导出为 CSV',
     noDataToExport: '暂无数据可导出',
+
+    // Cards & notifications
+    billReminders: '账单提醒',
+    reminderEnabled: '提醒已开启',
+    reminderDisabled: '提醒已关闭',
+    notifPermissionDenied: '请在设置中开启通知权限，以接收账单提醒。',
+    cardOptional: '关联卡片（可选）',
+    noCard: '不关联',
+    cardSpent: '已消费',
 
     // Email export
     sendToEmail: '发送到邮箱',

@@ -61,6 +61,13 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, cards: [...state.cards, action.payload] };
     case 'DELETE_CARD':
       return { ...state, cards: state.cards.filter(c => c.id !== action.payload) };
+    case 'TOGGLE_CARD_REMINDER':
+      return {
+        ...state,
+        cards: state.cards.map(c =>
+          c.id === action.payload ? { ...c, reminderEnabled: !c.reminderEnabled } : c
+        ),
+      };
     case 'SET_CURRENCY':
       return { ...state, currency: action.payload };
     case 'ADD_CATEGORY':

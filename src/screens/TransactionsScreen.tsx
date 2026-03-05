@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { Transaction, RecurringFrequency } from '../types';
+import { Transaction, RecurringFrequency, Card } from '../types';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../constants/categories';
 import { format } from 'date-fns';
 
@@ -28,16 +28,19 @@ function generateId() {
 function TransactionItem({
   item,
   currency,
+  cards,
   onDelete,
   onEdit,
 }: {
   item: Transaction;
   currency: string;
+  cards: Card[];
   onDelete: (id: string) => void;
   onEdit: (item: Transaction) => void;
 }) {
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+  const linkedCard = item.cardId ? cards.find(c => c.id === item.cardId) : undefined;
 
   return (
     <View style={styles.item}>
@@ -51,7 +54,15 @@ function TransactionItem({
       <View style={styles.itemInfo}>
         <Text style={styles.itemCategory}>{item.category}</Text>
         <Text style={styles.itemNote} numberOfLines={1}>{item.note || format(new Date(item.date), 'MMM d, yyyy')}</Text>
-        {item.note ? <Text style={styles.itemDate}>{format(new Date(item.date), 'MMM d, yyyy')}</Text> : null}
+        <View style={styles.itemMeta}>
+          {item.note ? <Text style={styles.itemDate}>{format(new Date(item.date), 'MMM d, yyyy')}</Text> : null}
+          {linkedCard && (
+            <View style={[styles.cardBadge, { backgroundColor: linkedCard.color + '22' }]}>
+              <Ionicons name="card-outline" size={10} color={linkedCard.color} />
+              <Text style={[styles.cardBadgeText, { color: linkedCard.color }]}>{linkedCard.name}</Text>
+            </View>
+          )}
+        </View>
       </View>
       <Text style={[styles.itemAmount, { color: item.type === 'income' ? '#00B894' : '#D63031' }]}>
         {item.type === 'income' ? '+' : '-'}{fmt(item.amount)}
@@ -71,7 +82,7 @@ const FREQ_OPTIONS: RecurringFrequency[] = ['daily', 'weekly', 'monthly'];
 export default function TransactionsScreen() {
   const { state, dispatch } = useApp();
   const t = useTranslation();
-  const { transactions, currency, categories } = state;
+  const { transactions, currency, categories, cards } = state;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -79,6 +90,7 @@ export default function TransactionsScreen() {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
+  const [cardId, setCardId] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -108,6 +120,7 @@ export default function TransactionsScreen() {
     setAmount('');
     setCategory('');
     setNote('');
+    setCardId('');
     setType('expense');
     setEditingTx(null);
     setIsRecurring(false);
@@ -121,6 +134,7 @@ export default function TransactionsScreen() {
     setAmount(tx.amount.toString());
     setCategory(tx.category);
     setNote(tx.note);
+    setCardId(tx.cardId || '');
     setModalVisible(true);
   }
 
@@ -137,7 +151,7 @@ export default function TransactionsScreen() {
     if (editingTx) {
       dispatch({
         type: 'UPDATE_TRANSACTION',
-        payload: { ...editingTx, amount: parsed, type, category, note },
+        payload: { ...editingTx, amount: parsed, type, category, note, cardId: cardId || undefined },
       });
     } else {
       const tx: Transaction = {
@@ -147,6 +161,7 @@ export default function TransactionsScreen() {
         category,
         note,
         date: new Date().toISOString(),
+        cardId: cardId || undefined,
       };
       dispatch({ type: 'ADD_TRANSACTION', payload: tx });
       if (isRecurring) {
@@ -251,7 +266,7 @@ export default function TransactionsScreen() {
         data={filtered}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <TransactionItem item={item} currency={currency} onDelete={handleDelete} onEdit={handleEdit} />
+          <TransactionItem item={item} currency={currency} cards={cards} onDelete={handleDelete} onEdit={handleEdit} />
         )}
         contentContainerStyle={filtered.length === 0 ? styles.emptyContainer : { padding: 16, gap: 10 }}
         ListEmptyComponent={
@@ -316,6 +331,32 @@ export default function TransactionsScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+
+              {cards.length > 0 && (
+                <>
+                  <Text style={styles.inputLabel}>{t('cardOptional')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
+                    <TouchableOpacity
+                      style={[styles.catChip, !cardId && styles.noCardChipActive]}
+                      onPress={() => setCardId('')}
+                    >
+                      <Text style={[styles.catChipText, !cardId && styles.catChipTextActive]}>{t('noCard')}</Text>
+                    </TouchableOpacity>
+                    {cards.map(c => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[styles.catChip, cardId === c.id && { backgroundColor: c.color }]}
+                        onPress={() => setCardId(c.id)}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="card-outline" size={12} color={cardId === c.id ? '#fff' : '#636E72'} />
+                          <Text style={[styles.catChipText, cardId === c.id && styles.catChipTextActive]}>{c.name}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
 
               {!editingTx && (
                 <>
@@ -417,6 +458,17 @@ const styles = StyleSheet.create({
   itemCategory: { fontSize: 14, fontWeight: '600', color: '#2D3436' },
   itemNote: { fontSize: 12, color: '#636E72', marginTop: 2 },
   itemDate: { fontSize: 11, color: '#B2BEC3', marginTop: 1 },
+  itemMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 1 },
+  cardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  cardBadgeText: { fontSize: 10, fontWeight: '600' },
+  noCardChipActive: { backgroundColor: '#6C5CE7' },
   itemAmount: { fontSize: 16, fontWeight: '700' },
   editBtn: { padding: 4 },
   deleteBtn: { padding: 4 },
