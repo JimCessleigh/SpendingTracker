@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system/next';
 import * as MailComposer from 'expo-mail-composer';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
@@ -126,13 +126,13 @@ export default function AIScreen({ visible, onClose }: Props) {
 
     try {
       const fileName = `pockyt_export_${format(new Date(), 'yyyyMMdd')}.csv`;
-      const filePath = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? '') + fileName;
-      await FileSystem.writeAsStringAsync(filePath, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      const file = new File(Paths.document + fileName);
+      await file.write(csv);
       await MailComposer.composeAsync({
         recipients: [email],
         subject: 'Pockyt Transactions Export',
         body: 'Please find your Pockyt transaction history attached.',
-        attachments: [filePath],
+        attachments: [file.uri],
       });
     } catch {
       await MailComposer.composeAsync({

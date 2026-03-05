@@ -152,6 +152,16 @@ export const translations = {
     send: 'Send',
     invalidEmail: 'Invalid Email',
     enterValidEmail: 'Please enter a valid email address.',
+
+    // OCR receipt scanning
+    scanning: 'Scanning...',
+    confirmReceipt: 'Confirm Receipt',
+    scannedByAi: 'Scanned by AI · tap to edit',
+    merchantNote: 'Merchant / Note',
+    receiptDate: 'Date (YYYY-MM-DD)',
+    skipReceipt: 'Skip',
+    ocrFailed: 'Could Not Read Receipt',
+    ocrDeepSeekNoVision: 'DeepSeek does not support image scanning. Switch to ChatGPT, Gemini, or Claude in Settings.',
   },
 
   zh: {
@@ -307,6 +317,16 @@ export const translations = {
     send: '发送',
     invalidEmail: '邮箱格式不正确',
     enterValidEmail: '请输入有效的邮箱地址。',
+
+    // OCR receipt scanning
+    scanning: '扫描中...',
+    confirmReceipt: '确认收据',
+    scannedByAi: 'AI 扫描 · 点击编辑',
+    merchantNote: '商家 / 备注',
+    receiptDate: '日期 (YYYY-MM-DD)',
+    skipReceipt: '跳过',
+    ocrFailed: '无法识别收据',
+    ocrDeepSeekNoVision: 'DeepSeek 不支持图片识别，请在设置中切换到 ChatGPT、Gemini 或 Claude。',
   },
 } as const;
 

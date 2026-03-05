@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { format } from 'date-fns';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system/next';
 import * as MailComposer from 'expo-mail-composer';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,13 +145,13 @@ export default function SettingsScreen() {
       // Try to attach the CSV as a file
       try {
         const fileName = `pockyt_export_${format(new Date(), 'yyyyMMdd')}.csv`;
-        const filePath = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? '') + fileName;
-        await FileSystem.writeAsStringAsync(filePath, csv, { encoding: FileSystem.EncodingType.UTF8 });
+        const file = new File(Paths.document + fileName);
+        await file.write(csv);
         await MailComposer.composeAsync({
           recipients: [email],
           subject: 'Pockyt Transactions Export',
           body: 'Please find your Pockyt transaction history attached.',
-          attachments: [filePath],
+          attachments: [file.uri],
         });
       } catch {
         // File attachment failed — compose with CSV in body instead
