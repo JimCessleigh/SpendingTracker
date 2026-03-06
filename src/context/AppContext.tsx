@@ -97,6 +97,12 @@ function reducer(state: AppState, action: AppAction): AppState {
           r.id === action.payload.id ? { ...r, lastAddedDate: action.payload.lastAddedDate } : r
         ),
       };
+    case 'ADD_GOAL':
+      return { ...state, goals: [...(state.goals || []), action.payload] };
+    case 'DELETE_GOAL':
+      return { ...state, goals: (state.goals || []).filter(g => g.id !== action.payload) };
+    case 'UPDATE_GOAL':
+      return { ...state, goals: (state.goals || []).map(g => g.id === action.payload.id ? action.payload : g) };
     default:
       return state;
   }

@@ -14,6 +14,7 @@ export const defaultState: AppState = {
   language: 'en',
   budgets: {},
   recurringTransactions: [],
+  goals: [],
 };
 
 export async function loadState(): Promise<AppState> {

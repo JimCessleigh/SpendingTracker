@@ -22,6 +22,7 @@ import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Transaction } from '../types';
 import { CATEGORY_COLORS } from '../constants/categories';
+import { theme } from '../constants/theme';
 import { scanReceiptWithOcr } from '../utils/ocr';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -339,8 +340,8 @@ export default function CameraScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: theme.colors.background },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -348,12 +349,12 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 20,
   },
-  header: { fontSize: 28, fontWeight: '700', color: '#2D3436' },
+  header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
   captureBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -414,11 +415,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
   },
-  captureBtn2Text: { color: '#6C5CE7', fontWeight: '600', fontSize: 15 },
-  permTitle: { fontSize: 20, fontWeight: '700', color: '#2D3436', marginTop: 16 },
-  permText: { fontSize: 14, color: '#636E72', textAlign: 'center', marginTop: 8 },
+  captureBtn2Text: { color: theme.colors.primary, fontWeight: '600', fontSize: 15 },
+  permTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text, marginTop: 16 },
+  permText: { fontSize: 14, color: theme.colors.textMuted, textAlign: 'center', marginTop: 8 },
   permBtn: {
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
@@ -458,7 +459,7 @@ const styles = StyleSheet.create({
   // Confirm modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#2D3436' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text },
   thumbPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   thumbPreview: { width: 72, height: 72, borderRadius: 10 },
   scannedHint: { fontSize: 12, color: '#B2BEC3', flex: 1 },
@@ -481,18 +482,18 @@ const styles = StyleSheet.create({
   },
   typeBtnExpenseActive: { backgroundColor: '#D63031', borderColor: '#D63031' },
   typeBtnIncomeActive: { backgroundColor: '#00B894', borderColor: '#00B894' },
-  typeBtnText: { fontSize: 14, fontWeight: '600', color: '#636E72' },
+  typeBtnText: { fontSize: 14, fontWeight: '600', color: theme.colors.textMuted },
   typeBtnTextActive: { color: '#fff' },
   input: {
     borderWidth: 1,
-    borderColor: '#DFE6E9',
+    borderColor: theme.colors.border,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
     marginBottom: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.surfaceMuted,
   },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#636E72', marginBottom: 8 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, marginBottom: 8 },
   categoryRow: { marginBottom: 16 },
   catChip: {
     paddingHorizontal: 14,
@@ -503,7 +504,7 @@ const styles = StyleSheet.create({
   },
   catChipText: { fontSize: 13, fontWeight: '500', color: '#636E72' },
   catChipTextActive: { color: '#fff' },
-  saveBtn: { backgroundColor: '#6C5CE7', borderRadius: 14, padding: 16, alignItems: 'center', marginBottom: 10 },
+  saveBtn: { backgroundColor: theme.colors.primary, borderRadius: 14, padding: 16, alignItems: 'center', marginBottom: 10 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   skipBtn: {
     borderWidth: 1,

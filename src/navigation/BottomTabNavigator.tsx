@@ -8,6 +8,7 @@ import TransactionsScreen from '../screens/TransactionsScreen';
 import CameraScreen from '../screens/CameraScreen';
 import CardsScreen from '../screens/CardsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { theme } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -28,8 +29,8 @@ export default function BottomTabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#6C5CE7',
-        tabBarInactiveTintColor: '#B2BEC3',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textFaint,
         tabBarLabelStyle: styles.tabLabel,
       }}
     >
@@ -79,19 +80,20 @@ export default function BottomTabNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopWidth: 0,
-    shadowColor: '#000',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 8,
-    height: 64,
+    height: 68,
     paddingBottom: 8,
+    paddingTop: 6,
   },
   tabLabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   cameraTabButton: {
     top: -20,
@@ -103,13 +105,13 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6C5CE7',
+    shadowColor: '#1E2A78',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
     elevation: 6,
   },
 });

@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
@@ -19,6 +20,8 @@ import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Card } from '../types';
 import { CARD_COLORS } from '../constants/categories';
+import { detectBankDomain, logoUrl, KNOWN_BANKS, getBankInfo } from '../constants/banks';
+import { theme } from '../constants/theme';
 import {
   setupNotificationChannel,
   requestNotificationPermissions,
@@ -59,6 +62,41 @@ function daysUntilDue(dueDate: string): number {
 function formatAnniversary(date: string): string {
   const [month, day] = date.split('-').map(Number);
   return `${MONTHS[month - 1]} ${ordinal(day)}`;
+}
+
+function BankBadge({ domain, size = 36 }: { domain: string; size?: number }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
+  const info = getBankInfo(domain);
+  const bgColor = info?.color ?? '#6C5CE7';
+  const initials = (info?.name ?? domain.split('.')[0]).slice(0, 2).toUpperCase();
+  const imgSize = Math.round(size * 0.78);
+  const offset = Math.round((size - imgSize) / 2);
+
+  return (
+    <View style={[styles.logoWrap, { width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor }]}>
+      {/* Initials shown until image loads */}
+      {(!imgLoaded || imgFailed) && (
+        <Text style={[styles.logoInitials, { fontSize: size * 0.32 }]}>{initials}</Text>
+      )}
+      {!imgFailed && (
+        <Image
+          source={{ uri: logoUrl(domain) }}
+          style={{
+            width: imgSize,
+            height: imgSize,
+            position: 'absolute',
+            top: offset,
+            left: offset,
+            borderRadius: imgSize / 2,
+          }}
+          resizeMode="cover"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgFailed(true)}
+        />
+      )}
+    </View>
+  );
 }
 
 function CardItem({
@@ -142,6 +180,12 @@ function CardItem({
           ) : null}
         </View>
       ) : null}
+
+      {card.bankDomain ? (
+        <View style={styles.cardLogoCorner}>
+          <BankBadge domain={card.bankDomain} size={42} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -165,6 +209,9 @@ export default function CardsScreen() {
   const [anniversaryMonth, setAnniversaryMonth] = useState(1);
   const [anniversaryDay, setAnniversaryDay] = useState(1);
   const [hasAnniversary, setHasAnniversary] = useState(false);
+  const [bankDomain, setBankDomain] = useState('');
+  const [showBankList, setShowBankList] = useState(false);
+  const [bankSearch, setBankSearch] = useState('');
 
   useEffect(() => {
     setupNotificationChannel();
@@ -184,6 +231,7 @@ export default function CardsScreen() {
     setSelectedDay(1); setSelectedColor(CARD_COLORS[0]);
     setAnnualFee(''); setAnniversaryMonth(1); setAnniversaryDay(1);
     setHasAnniversary(false);
+    setBankDomain(''); setBankSearch(''); setShowBankList(false);
     setModalVisible(true);
   }
 
@@ -204,6 +252,7 @@ export default function CardsScreen() {
       setAnniversaryMonth(1); setAnniversaryDay(1);
       setHasAnniversary(false);
     }
+    setBankDomain(card.bankDomain || ''); setBankSearch(''); setShowBankList(false);
     setModalVisible(true);
   }
 
@@ -218,6 +267,7 @@ export default function CardsScreen() {
       reminderEnabled,
       annualFee: annualFee.trim() ? parseFloat(annualFee) : undefined,
       anniversaryDate: hasAnniversary ? `${anniversaryMonth}-${anniversaryDay}` : undefined,
+      bankDomain: bankDomain || undefined,
     };
   }
 
@@ -302,7 +352,71 @@ export default function CardsScreen() {
             </View>
 
             <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <TextInput style={styles.input} placeholder={t('cardNamePlaceholder')} value={name} onChangeText={setName} />
+              <TextInput
+                style={styles.input}
+                placeholder={t('cardNamePlaceholder')}
+                value={name}
+                onChangeText={v => {
+                  setName(v);
+                  if (!bankDomain) {
+                    const detected = detectBankDomain(v);
+                    if (detected) setBankDomain(detected);
+                  }
+                }}
+              />
+
+              {/* Bank logo preview */}
+              {bankDomain ? (
+                <View style={styles.bankPreviewRow}>
+                  <BankBadge domain={bankDomain} size={36} />
+                  <Text style={styles.bankPreviewText}>{bankDomain}</Text>
+                  <TouchableOpacity onPress={() => setBankDomain('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={18} color="#B2BEC3" />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {/* Select bank button */}
+              <TouchableOpacity
+                style={styles.bankPickerBtn}
+                onPress={() => { setBankSearch(''); setShowBankList(v => !v); }}
+              >
+                <Ionicons name="business-outline" size={15} color="#6C5CE7" />
+                <Text style={styles.bankPickerBtnText}>{bankDomain ? t('changeBank') : t('selectBank')}</Text>
+                <Ionicons name={showBankList ? 'chevron-up' : 'chevron-down'} size={14} color="#6C5CE7" />
+              </TouchableOpacity>
+
+              {/* Inline bank list */}
+              {showBankList && (
+                <View style={styles.bankListContainer}>
+                  <TextInput
+                    style={styles.bankSearchInput}
+                    placeholder={t('searchBank')}
+                    value={bankSearch}
+                    onChangeText={setBankSearch}
+                    clearButtonMode="while-editing"
+                  />
+                  {KNOWN_BANKS
+                    .filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase()))
+                    .map(item => (
+                      <TouchableOpacity
+                        key={item.domain}
+                        style={styles.bankRow}
+                        onPress={() => {
+                          setBankDomain(item.domain);
+                          setShowBankList(false);
+                          setBankSearch('');
+                        }}
+                      >
+                          <BankBadge domain={item.domain} size={38} />
+                        <Text style={styles.bankRowName}>{item.name}</Text>
+                        {bankDomain === item.domain && <Ionicons name="checkmark" size={18} color="#6C5CE7" />}
+                      </TouchableOpacity>
+                    ))
+                  }
+                </View>
+              )}
+
               <TextInput
                 style={styles.input}
                 placeholder={t('lastFourDigits')}
@@ -402,12 +516,13 @@ export default function CardsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -415,9 +530,9 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 20,
   },
-  header: { fontSize: 28, fontWeight: '700', color: '#2D3436' },
+  header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
   addBtn: {
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -425,13 +540,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardItem: {
-    borderRadius: 20,
+    borderRadius: theme.radius.lg,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    ...theme.shadow.card,
+    overflow: 'hidden',
+  },
+  cardLogoCorner: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    opacity: 0.92,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   cardName: { fontSize: 18, fontWeight: '700', color: '#fff', flex: 1 },
@@ -452,11 +570,11 @@ const styles = StyleSheet.create({
   extraText: { fontSize: 11, color: 'rgba(255,255,255,0.8)', flex: 1 },
   emptyContainer: { flex: 1, justifyContent: 'center' },
   empty: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#636E72', marginTop: 16 },
-  emptyHint: { fontSize: 13, color: '#B2BEC3', marginTop: 6, textAlign: 'center', paddingHorizontal: 32 },
+  emptyText: { fontSize: 18, fontWeight: '600', color: theme.colors.textMuted, marginTop: 16 },
+  emptyHint: { fontSize: 13, color: theme.colors.textFaint, marginTop: 6, textAlign: 'center', paddingHorizontal: 32 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -464,44 +582,104 @@ const styles = StyleSheet.create({
     maxHeight: '92%',
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#2D3436' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text },
   input: {
     borderWidth: 1,
-    borderColor: '#DFE6E9',
+    borderColor: theme.colors.border,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
     marginBottom: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.surfaceMuted,
   },
   inputMulti: { height: 72, textAlignVertical: 'top' },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#636E72', marginBottom: 6 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, marginBottom: 6 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   pickerSingle: {
     borderWidth: 1,
-    borderColor: '#DFE6E9',
+    borderColor: theme.colors.border,
     borderRadius: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.surfaceMuted,
     marginBottom: 12,
     overflow: 'hidden',
   },
   pickerRow: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: '#DFE6E9',
+    borderColor: theme.colors.border,
     borderRadius: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.surfaceMuted,
     marginBottom: 12,
     overflow: 'hidden',
   },
   pickerCol: { flex: 1 },
-  pickerHeader: { textAlign: 'center', fontSize: 12, color: '#636E72', paddingTop: 8 },
-  pickerDivider: { width: 1, backgroundColor: '#DFE6E9', marginVertical: 8 },
+  pickerHeader: { textAlign: 'center', fontSize: 12, color: theme.colors.textMuted, paddingTop: 8 },
+  pickerDivider: { width: 1, backgroundColor: theme.colors.border, marginVertical: 8 },
   picker: { height: 120 },
   pickerItem: { fontSize: 16, height: 120 },
   colorRow: { marginBottom: 20 },
   colorDot: { width: 32, height: 32, borderRadius: 16, marginRight: 10 },
   colorDotSelected: { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
-  saveBtn: { backgroundColor: '#6C5CE7', borderRadius: 14, padding: 16, alignItems: 'center' },
+  saveBtn: { backgroundColor: theme.colors.primary, borderRadius: 14, padding: 16, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // Bank badge (card widget + picker + preview)
+  logoWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  logoInitials: {
+    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  // Bank preview in form
+  bankPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EEF0FF',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+  },
+  bankPreviewText: { flex: 1, fontSize: 13, color: theme.colors.textMuted },
+
+  bankPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    padding: 10,
+    marginBottom: 4,
+  },
+  bankPickerBtnText: { fontSize: 14, color: '#6C5CE7', fontWeight: '500', flex: 1 },
+
+  // Inline bank list
+  bankListContainer: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  bankSearchInput: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    padding: 12,
+    fontSize: 15,
+    backgroundColor: theme.colors.surfaceMuted,
+  },
+  bankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  bankRowName: { flex: 1, fontSize: 14, color: theme.colors.text },
 });

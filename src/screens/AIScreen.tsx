@@ -22,7 +22,14 @@ import { useTranslation } from '../hooks/useTranslation';
 import { sendAIMessageWithTools, ChatMessage, AIProvider } from '../utils/ai';
 import { TOOL_DEFINITIONS, executeToolCall } from '../utils/aiTools';
 import { translations } from '../i18n/translations';
-import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { theme } from '../constants/theme';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  isWithinInterval,
+} from 'date-fns';
 
 const PROVIDER_LABELS: Record<string, string> = {
   chatgpt: 'ChatGPT',
@@ -37,62 +44,318 @@ interface DisplayMessage {
   actions?: string[];
 }
 
+// ── Analytics helpers ──────────────────────────────────────────────────────────
+
+function monthExpenses(transactions: ReturnType<typeof useApp>['state']['transactions'], offset: number) {
+  const now = new Date();
+  const ref = subMonths(now, offset);
+  const start = startOfMonth(ref);
+  const end = endOfMonth(ref);
+  return transactions
+    .filter(t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end }))
+    .reduce((s, t) => s + t.amount, 0);
+}
+
+function monthIncome(transactions: ReturnType<typeof useApp>['state']['transactions'], offset: number) {
+  const now = new Date();
+  const ref = subMonths(now, offset);
+  const start = startOfMonth(ref);
+  const end = endOfMonth(ref);
+  return transactions
+    .filter(t => t.type === 'income' && isWithinInterval(new Date(t.date), { start, end }))
+    .reduce((s, t) => s + t.amount, 0);
+}
+
+function categoryAverages(
+  transactions: ReturnType<typeof useApp>['state']['transactions'],
+  months: number
+): Record<string, number> {
+  const now = new Date();
+  const start = startOfMonth(subMonths(now, months - 1));
+  const end = endOfMonth(now);
+  const relevant = transactions.filter(
+    t => t.type === 'expense' && isWithinInterval(new Date(t.date), { start, end })
+  );
+  const catTotals: Record<string, number> = {};
+  relevant.forEach(t => { catTotals[t.category] = (catTotals[t.category] || 0) + t.amount; });
+  const result: Record<string, number> = {};
+  Object.entries(catTotals).forEach(([cat, total]) => { result[cat] = total / months; });
+  return result;
+}
+
+function detectAnomalies(
+  transactions: ReturnType<typeof useApp>['state']['transactions'],
+  avgs: Record<string, number>,
+  currency: string
+): string[] {
+  // Look at last 30 days for individual transactions well above category avg
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const anomalies: string[] = [];
+  transactions
+    .filter(t => t.type === 'expense' && new Date(t.date) >= cutoff)
+    .forEach(t => {
+      const avg = avgs[t.category];
+      if (avg && t.amount > avg * 2.5 && t.amount > 20) {
+        anomalies.push(
+          `${t.date.slice(0, 10)} | ${t.category} | ${t.amount.toFixed(2)} ${currency} (${Math.round(t.amount / avg)}x avg)`
+        );
+      }
+    });
+  return anomalies.slice(0, 5);
+}
+
+function computeHealthScore(
+  totalIncome: number,
+  totalExpense: number,
+  budgets: Record<string, number>,
+  categorySpend: Record<string, number>
+): { score: number; breakdown: string } {
+  let score = 0;
+  const parts: string[] = [];
+
+  // Savings rate (0-40 pts)
+  if (totalIncome > 0) {
+    const savingsRate = Math.max(0, (totalIncome - totalExpense) / totalIncome);
+    const savingsPts = Math.min(40, Math.round(savingsRate * 100));
+    score += savingsPts;
+    parts.push(`Savings ${savingsPts}/40`);
+  } else {
+    parts.push('Savings 0/40 (no income recorded)');
+  }
+
+  // Budget adherence (0-30 pts)
+  const budgetCats = Object.keys(budgets);
+  if (budgetCats.length > 0) {
+    const within = budgetCats.filter(c => (categorySpend[c] || 0) <= budgets[c]).length;
+    const budgetPts = Math.round((within / budgetCats.length) * 30);
+    score += budgetPts;
+    parts.push(`Budget ${budgetPts}/30`);
+  } else {
+    score += 15; // neutral if no budgets set
+    parts.push('Budget 15/30 (no budgets set)');
+  }
+
+  // Expense variety / balanced spending (0-20 pts)
+  const numCategories = Object.keys(categorySpend).length;
+  const varietyPts = Math.min(20, numCategories * 3);
+  score += varietyPts;
+  parts.push(`Variety ${varietyPts}/20`);
+
+  // Expense vs income ratio bonus (0-10 pts)
+  if (totalIncome > 0 && totalExpense < totalIncome * 0.7) {
+    score += 10;
+    parts.push('Low spending 10/10');
+  } else if (totalIncome > 0 && totalExpense < totalIncome) {
+    score += 5;
+    parts.push('Moderate spending 5/10');
+  } else {
+    parts.push('High spending 0/10');
+  }
+
+  return { score: Math.min(100, score), breakdown: parts.join(' | ') };
+}
+
+function userPersonality(
+  transactions: ReturnType<typeof useApp>['state']['transactions'],
+  months: number
+): string {
+  let totalSaved = 0;
+  let totalSpent = 0;
+  for (let i = 0; i < months; i++) {
+    totalSaved += monthIncome(transactions, i);
+    totalSpent += monthExpenses(transactions, i);
+  }
+  if (totalSaved === 0 && totalSpent === 0) return 'Unknown (not enough data)';
+  const rate = totalSaved > 0 ? (totalSaved - totalSpent) / totalSaved : -1;
+  if (rate > 0.3) return 'Saver (saves 30%+ of income consistently)';
+  if (rate > 0.1) return 'Balanced (saves 10-30% of income)';
+  if (rate > 0) return 'Tight (saves under 10% of income)';
+  return 'Overspender (expenses exceed income)';
+}
+
 function buildContext(state: ReturnType<typeof useApp>['state']): string {
-  const { transactions, cards, currency } = state;
+  const { transactions, cards, currency, budgets, goals } = state;
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
+  const lastMonthStart = startOfMonth(subMonths(now, 1));
+  const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
+  // This month
   const thisMonth = transactions.filter(t =>
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
   );
-
   const totalIncome = thisMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = thisMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  const categoryMap: Record<string, number> = {};
-  thisMonth.filter(t => t.type === 'expense').forEach(t => {
-    categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
-  });
+  // Last month
+  const lastMonth = transactions.filter(t =>
+    isWithinInterval(new Date(t.date), { start: lastMonthStart, end: lastMonthEnd })
+  );
+  const lastMonthExpense = lastMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const lastMonthIncome = lastMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
 
-  const topCategories = Object.entries(categoryMap)
+  // Month-over-month change
+  const expenseChange = lastMonthExpense > 0
+    ? ((totalExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)
+    : 'N/A';
+  const incomeChange = lastMonthIncome > 0
+    ? ((totalIncome - lastMonthIncome) / lastMonthIncome * 100).toFixed(1)
+    : 'N/A';
+
+  // Category breakdown this month
+  const categorySpend: Record<string, number> = {};
+  thisMonth.filter(t => t.type === 'expense').forEach(t => {
+    categorySpend[t.category] = (categorySpend[t.category] || 0) + t.amount;
+  });
+  const topCategories = Object.entries(categorySpend)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
-    .map(([cat, amount]) => `${cat}: ${amount.toFixed(2)} ${currency}`)
+    .slice(0, 8)
+    .map(([cat, amount]) => {
+      const budget = budgets[cat];
+      const budgetStr = budget ? ` / budget ${budget.toFixed(2)}` : '';
+      return `${cat}: ${amount.toFixed(2)} ${currency}${budgetStr}`;
+    })
     .join(', ') || 'No expenses yet';
 
+  // 6-month category averages for pattern/anomaly detection
+  const avgs6m = categoryAverages(transactions, 6);
+  const avgsList = Object.entries(avgs6m)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([cat, avg]) => `${cat}: ${avg.toFixed(2)} ${currency}/month`)
+    .join(', ') || 'Not enough history';
+
+  // Anomaly detection
+  const anomalies = detectAnomalies(transactions, avgs6m, currency);
+  const anomalySection = anomalies.length > 0
+    ? `POTENTIAL ANOMALIES (unusually large transactions, last 30 days):\n${anomalies.join('\n')}`
+    : 'No anomalies detected in the last 30 days.';
+
+  // Spending forecast (avg of last 3 months expense)
+  const m1 = monthExpenses(transactions, 1);
+  const m2 = monthExpenses(transactions, 2);
+  const m3 = monthExpenses(transactions, 3);
+  const validMonths = [m1, m2, m3].filter(v => v > 0);
+  const forecast = validMonths.length > 0
+    ? (validMonths.reduce((a, b) => a + b, 0) / validMonths.length).toFixed(2)
+    : 'Insufficient data';
+
+  // Financial health score
+  const { score: healthScore, breakdown: healthBreakdown } = computeHealthScore(
+    totalIncome, totalExpense, budgets, categorySpend
+  );
+  const healthLabel = healthScore >= 75 ? 'Excellent' : healthScore >= 55 ? 'Good' : healthScore >= 35 ? 'Fair' : 'Needs Work';
+
+  // User personality
+  const personality = userPersonality(transactions, 6);
+
+  // Budget section
+  const budgetKeys = Object.keys(budgets);
+  const budgetSection = budgetKeys.length > 0
+    ? budgetKeys.map(cat => {
+        const spent = categorySpend[cat] || 0;
+        const limit = budgets[cat];
+        const pct = Math.round((spent / limit) * 100);
+        const status = spent > limit ? 'OVER BUDGET' : pct >= 80 ? 'near limit' : 'ok';
+        return `${cat}: ${spent.toFixed(2)}/${limit.toFixed(2)} ${currency} (${pct}% - ${status})`;
+      }).join('\n')
+    : 'No budgets set';
+
+  // Transaction list (most recent 30)
   const txList = transactions.slice(0, 30).map(t =>
     `[id:${t.id}] ${t.date.slice(0, 10)} | ${t.type} | ${t.amount.toFixed(2)} ${currency} | ${t.category}${t.note ? ' | ' + t.note : ''}`
   ).join('\n') || 'No transactions yet';
 
+  // Card list with benefits
   const cardList = cards.map(c =>
-    `[id:${c.id}] ${c.name} | ···· ${c.lastFour} | due: ${c.dueDate}`
+    `[id:${c.id}] ${c.name} | ···· ${c.lastFour} | due: ${c.dueDate}${c.benefits ? ' | benefits: ' + c.benefits : ''}${c.annualFee ? ' | annual fee: ' + c.annualFee : ''}`
   ).join('\n') || 'No cards';
+
+  // Goals
+  const goalsList = (goals || []).length > 0
+    ? (goals || []).map(g => {
+        const pct = Math.round((g.savedAmount / g.targetAmount) * 100);
+        const deadlineStr = g.deadline ? ` | deadline: ${g.deadline}` : '';
+        const remaining = (g.targetAmount - g.savedAmount).toFixed(2);
+        return `[id:${g.id}] "${g.title}" — saved: ${g.savedAmount}/${g.targetAmount} ${currency} (${pct}%)${deadlineStr} | still need: ${remaining} ${currency}`;
+      }).join('\n')
+    : 'No goals set yet. Use set_goal tool to create one.';
 
   const lang = (state.language === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
   const langInstruction = translations[lang].aiLanguageInstruction;
 
-  return `You are Pockyt, a friendly AI financial assistant built into the Pockyt spending tracker app. Be concise, helpful, and encouraging. You can perform actions like adding/deleting transactions and cards, changing the app language, or sending a CSV export by email — use the available tools when the user asks you to. ${langInstruction}
+  return `You are Pockyt AI, an expert financial coach and assistant built into the Pockyt spending tracker app. You have deep access to the user's financial data and can:
+- Give personalized financial insights and advice
+- Detect spending patterns and anomalies
+- Suggest smart budgets based on history
+- Provide financial health assessments
+- Help set and track savings goals
+- Recommend which credit card to use for different spending categories
+- Give monthly AI summary reports
+- Forecast next month's spending
+- Identify unusual transactions that might be errors or fraud
+- Provide personality-based financial coaching (saver vs spender style)
+- Perform actions: add/delete transactions and cards, set goals, change language, send CSV export
 
+Always be specific, data-driven, and actionable. Reference actual numbers from the user's data. ${langInstruction}
+
+━━━ FINANCIAL SNAPSHOT ━━━
 Current month: ${format(now, 'MMMM yyyy')}
 Currency: ${currency}
-This month's income: ${totalIncome.toFixed(2)} ${currency}
-This month's expenses: ${totalExpense.toFixed(2)} ${currency}
+
+This month income: ${totalIncome.toFixed(2)} ${currency} (${incomeChange !== 'N/A' ? (parseFloat(incomeChange) >= 0 ? '+' : '') + incomeChange + '% vs last month' : 'no prior data'})
+This month expenses: ${totalExpense.toFixed(2)} ${currency} (${expenseChange !== 'N/A' ? (parseFloat(expenseChange) >= 0 ? '+' : '') + expenseChange + '% vs last month' : 'no prior data'})
 Net balance: ${(totalIncome - totalExpense).toFixed(2)} ${currency}
-Top spending categories: ${topCategories}
-Total transactions in history: ${transactions.length}
+Last month expenses: ${lastMonthExpense.toFixed(2)} ${currency}
+Last month income: ${lastMonthIncome.toFixed(2)} ${currency}
 
-Transactions (use IDs for delete_transaction, most recent first):
-${txList}
+━━━ FINANCIAL HEALTH SCORE ━━━
+Score: ${healthScore}/100 (${healthLabel})
+Breakdown: ${healthBreakdown}
+User profile: ${personality}
 
-Cards (use IDs for delete_card):
-${cardList}`;
+━━━ SPENDING BY CATEGORY (this month) ━━━
+${topCategories}
+
+━━━ BUDGET STATUS ━━━
+${budgetSection}
+
+━━━ 6-MONTH SPENDING AVERAGES ━━━
+${avgsList}
+
+━━━ ANOMALY DETECTION ━━━
+${anomalySection}
+
+━━━ PREDICTIVE FORECAST ━━━
+Estimated next month spending: ${forecast} ${currency} (based on last 3 months average)
+
+━━━ GOALS ━━━
+${goalsList}
+
+━━━ CARDS ━━━
+${cardList}
+
+━━━ RECENT TRANSACTIONS (use IDs for delete_transaction) ━━━
+Total in history: ${transactions.length}
+${txList}`;
 }
 
 interface Props {
   visible: boolean;
   onClose: () => void;
 }
+
+const INSIGHT_CHIPS = [
+  { icon: 'analytics-outline' as const, labelKey: 'insightChipHealth' },
+  { icon: 'trending-up-outline' as const, labelKey: 'insightChipPattern' },
+  { icon: 'wallet-outline' as const, labelKey: 'insightChipBudget' },
+  { icon: 'alert-circle-outline' as const, labelKey: 'insightChipAnomaly' },
+  { icon: 'card-outline' as const, labelKey: 'insightChipCard' },
+  { icon: 'flag-outline' as const, labelKey: 'insightChipGoal' },
+  { icon: 'calendar-outline' as const, labelKey: 'insightChipForecast' },
+  { icon: 'document-text-outline' as const, labelKey: 'insightChipSummary' },
+];
 
 export default function AIScreen({ visible, onClose }: Props) {
   const { state, dispatch } = useApp();
@@ -185,6 +448,17 @@ export default function AIScreen({ visible, onClose }: Props) {
     }
   }
 
+  const quickPrompts: Record<string, string> = {
+    insightChipHealth: t('insightPromptHealth'),
+    insightChipPattern: t('insightPromptPattern'),
+    insightChipBudget: t('insightPromptBudget'),
+    insightChipAnomaly: t('insightPromptAnomaly'),
+    insightChipCard: t('insightPromptCard'),
+    insightChipGoal: t('insightPromptGoal'),
+    insightChipForecast: t('insightPromptForecast'),
+    insightChipSummary: t('insightPromptSummary'),
+  };
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -227,6 +501,22 @@ export default function AIScreen({ visible, onClose }: Props) {
                 </View>
                 <Text style={styles.welcomeTitle}>{t('hiImPockyt')}</Text>
                 <Text style={styles.welcomeText}>{t('welcomeText')}</Text>
+
+                <Text style={styles.insightSectionTitle}>{t('insightSectionTitle')}</Text>
+                <View style={styles.insightGrid}>
+                  {INSIGHT_CHIPS.map(chip => (
+                    <TouchableOpacity
+                      key={chip.labelKey}
+                      style={styles.insightChip}
+                      onPress={() => sendMessage(quickPrompts[chip.labelKey])}
+                    >
+                      <Ionicons name={chip.icon} size={18} color="#6C5CE7" />
+                      <Text style={styles.insightChipText}>{t(chip.labelKey as any)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.insightSectionTitle}>{t('quickQSectionTitle')}</Text>
                 <View style={styles.quickQuestions}>
                   {([t('quickQ1'), t('quickQ2'), t('quickQ3'), t('quickQ4')] as string[]).map(q => (
                     <TouchableOpacity key={q} style={styles.quickChip} onPress={() => sendMessage(q)}>
@@ -304,27 +594,27 @@ export default function AIScreen({ visible, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F5',
+    borderBottomColor: theme.colors.border,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#2D3436' },
-  headerSub: { fontSize: 12, color: '#B2BEC3', marginTop: 1 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: theme.colors.text },
+  headerSub: { fontSize: 12, color: theme.colors.textFaint, marginTop: 1 },
   closeBtn: {
     width: 36,
     height: 36,
@@ -346,7 +636,7 @@ const styles = StyleSheet.create({
   warningText: { flex: 1, fontSize: 13, color: '#E17055' },
   messages: { flex: 1 },
   messagesContent: { padding: 16, paddingBottom: 8 },
-  welcomeContainer: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 8 },
+  welcomeContainer: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 4 },
   welcomeAvatar: {
     width: 64,
     height: 64,
@@ -356,18 +646,48 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  welcomeTitle: { fontSize: 22, fontWeight: '700', color: '#2D3436', marginBottom: 8 },
-  welcomeText: { fontSize: 14, color: '#636E72', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  welcomeTitle: { fontSize: 22, fontWeight: '700', color: theme.colors.text, marginBottom: 8 },
+  welcomeText: { fontSize: 14, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+
+  insightSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B2BEC3',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  insightGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
+    marginBottom: 16,
+  },
+  insightChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EEE9FF',
+    borderRadius: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+  insightChipText: { fontSize: 13, color: theme.colors.primary, fontWeight: '600' },
+
   quickQuestions: { width: '100%', gap: 8 },
   quickChip: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#DFE6E9',
+    borderColor: theme.colors.border,
     borderRadius: 12,
     padding: 12,
     paddingHorizontal: 14,
   },
-  quickChipText: { fontSize: 14, color: '#2D3436' },
+  quickChipText: { fontSize: 14, color: theme.colors.text },
+
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 4 },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowAI: { justifyContent: 'flex-start' },
@@ -381,7 +701,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   msgBubble: { maxWidth: '78%', borderRadius: 18, padding: 12, paddingHorizontal: 14 },
-  msgBubbleUser: { backgroundColor: '#6C5CE7', borderBottomRightRadius: 4 },
+  msgBubbleUser: { backgroundColor: theme.colors.primary, borderBottomRightRadius: 4 },
   msgBubbleAI: {
     backgroundColor: '#fff',
     borderBottomLeftRadius: 4,
@@ -393,7 +713,7 @@ const styles = StyleSheet.create({
   },
   msgText: { fontSize: 15, lineHeight: 21 },
   msgTextUser: { color: '#fff' },
-  msgTextAI: { color: '#2D3436' },
+  msgTextAI: { color: theme.colors.text },
   actionsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 2, marginBottom: 4 },
   actionsAvatarSpacer: { width: 28, flexShrink: 0 },
   actionsBubble: {
@@ -413,26 +733,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     gap: 10,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F5',
+    borderTopColor: theme.colors.border,
   },
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#DFE6E9',
+    borderColor: theme.colors.border,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.surfaceMuted,
     maxHeight: 100,
   },
   sendBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

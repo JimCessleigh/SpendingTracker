@@ -5,6 +5,8 @@ import { Card } from '../types';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -30,15 +32,16 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function scheduleCardReminder(card: Card): Promise<void> {
   await cancelCardReminder(card.id);
 
-  const [, day] = card.dueDate.split('-').map(Number);
-  // Remind the day before; if due on the 1st, remind on the 28th (safe for all months)
+  const parsedDay = Number((card.dueDate || '').split('-').pop());
+  const day = Number.isFinite(parsedDay) && parsedDay >= 1 && parsedDay <= 31 ? parsedDay : 1;
+  // Remind the day before; if due on the 1st, remind on the 28th (safe for all months).
   const reminderDay = day > 1 ? day - 1 : 28;
 
   await Notifications.scheduleNotificationAsync({
     identifier: `card-reminder-${card.id}`,
     content: {
-      title: '💳 Payment Due Tomorrow',
-      body: `${card.name} (···· ${card.lastFour}) payment is due tomorrow`,
+      title: 'Payment Due Tomorrow',
+      body: `${card.name} (**** ${card.lastFour}) payment is due tomorrow`,
       data: { cardId: card.id },
       sound: 'default',
     },
@@ -56,6 +59,6 @@ export async function cancelCardReminder(cardId: string): Promise<void> {
   try {
     await Notifications.cancelScheduledNotificationAsync(`card-reminder-${cardId}`);
   } catch {
-    // notification may not exist — ignore
+    // Notification may not exist.
   }
 }

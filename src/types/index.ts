@@ -21,6 +21,7 @@ export interface Card {
   reminderEnabled?: boolean;
   annualFee?: number;       // e.g. 95
   anniversaryDate?: string; // "M-D" format e.g. "3-15" = March 15
+  bankDomain?: string;      // clearbit domain e.g. "chase.com", absent = no logo
 }
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
@@ -35,6 +36,14 @@ export interface RecurringTransaction {
   lastAddedDate: string; // ISO string
 }
 
+export interface Goal {
+  id: string;
+  title: string;
+  targetAmount: number;
+  savedAmount: number;
+  deadline?: string; // ISO date string
+}
+
 export interface AppState {
   transactions: Transaction[];
   cards: Card[];
@@ -45,6 +54,7 @@ export interface AppState {
   language: string;
   budgets: Record<string, number>;
   recurringTransactions: RecurringTransaction[];
+  goals: Goal[];
 }
 
 export type AppAction =
@@ -65,4 +75,7 @@ export type AppAction =
   | { type: 'ADD_RECURRING'; payload: RecurringTransaction }
   | { type: 'DELETE_RECURRING'; payload: string }
   | { type: 'UPDATE_RECURRING_DATE'; payload: { id: string; lastAddedDate: string } }
+  | { type: 'ADD_GOAL'; payload: Goal }
+  | { type: 'DELETE_GOAL'; payload: string }
+  | { type: 'UPDATE_GOAL'; payload: Goal }
   | { type: 'LOAD_STATE'; payload: AppState };

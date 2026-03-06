@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from './src/context/AppContext';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 import AIScreen from './src/screens/AIScreen';
+import { theme } from './src/constants/theme';
 
 function AppInner() {
   const [aiVisible, setAiVisible] = useState(false);
@@ -38,7 +39,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   fab: {
     position: 'absolute',
     bottom: 90,
@@ -46,13 +47,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#6C5CE7',
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6C5CE7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    ...theme.shadow.card,
   },
 });

@@ -16,7 +16,7 @@ export async function sendAIMessageWithTools(
   toolDefs: any[],
   onToolCall: OnToolCall
 ): Promise<string> {
-  if (!apiKey) throw new Error('No API key set. Please add your API key in Settings → AI Assistant.');
+  if (!apiKey) throw new Error('No API key set. Please add your API key in Settings > AI Assistant.');
 
   switch (provider) {
     case 'chatgpt':
@@ -173,7 +173,7 @@ export async function sendAIMessage(
   messages: ChatMessage[],
   systemPrompt: string
 ): Promise<string> {
-  if (!apiKey) throw new Error('No API key set. Please add your API key in Settings → AI Assistant.');
+  if (!apiKey) throw new Error('No API key set. Please add your API key in Settings > AI Assistant.');
 
   switch (provider) {
     case 'chatgpt':
