@@ -21,7 +21,10 @@ function processRecurring(
     } else if (r.frequency === 'weekly') {
       isDue = differenceInCalendarDays(now, last) >= 7;
     } else if (r.frequency === 'monthly') {
-      isDue = now.getMonth() !== last.getMonth() || now.getFullYear() !== last.getFullYear();
+      // Fix: require both different month AND at least 28 days elapsed to prevent double-creation
+      const monthsDiffer =
+        now.getMonth() !== last.getMonth() || now.getFullYear() !== last.getFullYear();
+      isDue = monthsDiffer && differenceInCalendarDays(now, last) >= 28;
     }
     if (isDue) {
       dispatch({
@@ -108,6 +111,49 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, goals: (state.goals || []).map(g => g.id === action.payload.id ? action.payload : g) };
     case 'TOGGLE_DARK_MODE':
       return { ...state, darkMode: !state.darkMode };
+
+    // Merchant rules
+    case 'ADD_MERCHANT_RULE':
+      return { ...state, merchantRules: [...(state.merchantRules || []), action.payload] };
+    case 'DELETE_MERCHANT_RULE':
+      return { ...state, merchantRules: (state.merchantRules || []).filter(r => r.id !== action.payload) };
+
+    // Bill splits
+    case 'ADD_BILL_SPLIT':
+      return { ...state, billSplits: [...(state.billSplits || []), action.payload] };
+    case 'UPDATE_BILL_SPLIT':
+      return { ...state, billSplits: (state.billSplits || []).map(s => s.id === action.payload.id ? action.payload : s) };
+    case 'DELETE_BILL_SPLIT':
+      return { ...state, billSplits: (state.billSplits || []).filter(s => s.id !== action.payload) };
+    case 'SETTLE_PARTICIPANT':
+      return {
+        ...state,
+        billSplits: (state.billSplits || []).map(s =>
+          s.id === action.payload.splitId
+            ? {
+                ...s,
+                participants: s.participants.map(p =>
+                  p.name === action.payload.participantName ? { ...p, settled: true } : p
+                ),
+              }
+            : s
+        ),
+      };
+
+    // Subscriptions
+    case 'ADD_SUBSCRIPTION':
+      return { ...state, subscriptions: [...(state.subscriptions || []), action.payload] };
+    case 'UPDATE_SUBSCRIPTION':
+      return { ...state, subscriptions: (state.subscriptions || []).map(s => s.id === action.payload.id ? action.payload : s) };
+    case 'DELETE_SUBSCRIPTION':
+      return { ...state, subscriptions: (state.subscriptions || []).filter(s => s.id !== action.payload) };
+
+    // Chat history
+    case 'SET_CHAT_HISTORY':
+      return { ...state, chatHistory: action.payload };
+    case 'CLEAR_CHAT_HISTORY':
+      return { ...state, chatHistory: [] };
+
     default:
       return state;
   }

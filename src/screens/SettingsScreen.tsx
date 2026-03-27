@@ -26,6 +26,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { clearState, defaultState, exportState, importState } from '../storage/storage';
 import { AppTheme } from '../constants/theme';
+import { MerchantRule, Subscription } from '../types';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'HKD', 'SGD', 'AUD', 'CAD'];
 
@@ -80,6 +81,8 @@ export default function SettingsScreen() {
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emailSending, setEmailSending] = useState(false);
+  const [pdfDateFrom, setPdfDateFrom] = useState('');
+  const [pdfDateTo, setPdfDateTo] = useState('');
   const [restoreModalVisible, setRestoreModalVisible] = useState(false);
   const [restoreInput, setRestoreInput] = useState('');
   const [recurringModalVisible, setRecurringModalVisible] = useState(false);
@@ -87,6 +90,21 @@ export default function SettingsScreen() {
   const [keyInput, setKeyInput] = useState(aiKey);
   const [showKey, setShowKey] = useState(false);
   const [localBudgets, setLocalBudgets] = useState<Record<string, string>>({});
+  // Merchant rules
+  const [merchantModalVisible, setMerchantModalVisible] = useState(false);
+  const [newKeyword, setNewKeyword] = useState('');
+  const [newRuleCategory, setNewRuleCategory] = useState('');
+  // Subscriptions
+  const [subModalVisible, setSubModalVisible] = useState(false);
+  const [addSubVisible, setAddSubVisible] = useState(false);
+  const [subName, setSubName] = useState('');
+  const [subAmount, setSubAmount] = useState('');
+  const [subCategory, setSubCategory] = useState('');
+  const [subCycle, setSubCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [subDue, setSubDue] = useState('');
+  // CSV import
+  const [csvModalVisible, setCsvModalVisible] = useState(false);
+  const [csvInput, setCsvInput] = useState('');
 
   const selectedProvider = AI_PROVIDERS.find(p => p.id === aiProvider) || AI_PROVIDERS[0];
   const budgetCount = Object.values(budgets).filter(v => v > 0).length;
@@ -118,6 +136,8 @@ export default function SettingsScreen() {
       return;
     }
     setEmailInput('');
+    setPdfDateFrom('');
+    setPdfDateTo('');
     setEmailModalVisible(true);
   }
 
@@ -135,15 +155,24 @@ export default function SettingsScreen() {
       const fmt = (n: number) =>
         new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n);
 
-      const totalIncome = transactions
+      // Apply optional date range filter
+      let filteredTxs = transactions;
+      if (pdfDateFrom && /^\d{4}-\d{2}-\d{2}$/.test(pdfDateFrom)) {
+        filteredTxs = filteredTxs.filter(tx => tx.date.slice(0, 10) >= pdfDateFrom);
+      }
+      if (pdfDateTo && /^\d{4}-\d{2}-\d{2}$/.test(pdfDateTo)) {
+        filteredTxs = filteredTxs.filter(tx => tx.date.slice(0, 10) <= pdfDateTo);
+      }
+
+      const totalIncome = filteredTxs
         .filter(tx => tx.type === 'income')
         .reduce((s, tx) => s + tx.amount, 0);
-      const totalExpense = transactions
+      const totalExpense = filteredTxs
         .filter(tx => tx.type === 'expense')
         .reduce((s, tx) => s + tx.amount, 0);
 
       const byMonth: Record<string, typeof transactions> = {};
-      transactions.forEach(tx => {
+      filteredTxs.forEach(tx => {
         const key = tx.date.slice(0, 7);
         if (!byMonth[key]) byMonth[key] = [];
         byMonth[key].push(tx);
@@ -230,7 +259,7 @@ export default function SettingsScreen() {
             </div>
           </div>
           ${monthSections}
-          <div class="footer">Pockyt \u00b7 ${transactions.length} transactions \u00b7 Exported ${format(new Date(), 'yyyy-MM-dd')}</div>
+          <div class="footer">Pockyt \u00b7 ${filteredTxs.length} transactions \u00b7 Exported ${format(new Date(), 'yyyy-MM-dd')}${pdfDateFrom || pdfDateTo ? ` \u00b7 ${pdfDateFrom || '...'} to ${pdfDateTo || '...'}` : ''}</div>
         </body>
         </html>`;
 
@@ -321,10 +350,121 @@ export default function SettingsScreen() {
   }
 
   function handleDeleteCategory(cat: string) {
-    Alert.alert(t('deleteCategory'), t('removeCategoryPrompt')(cat), [
+    const usedCount = transactions.filter(tx => tx.category === cat).length;
+    const message = usedCount > 0
+      ? `${usedCount} transaction${usedCount !== 1 ? 's' : ''} use this category. They will keep the category name but it won't appear in filters.`
+      : t('removeCategoryPrompt')(cat);
+    Alert.alert(t('deleteCategory'), message, [
       { text: t('cancel'), style: 'cancel' },
       { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_CATEGORY', payload: cat }) },
     ]);
+  }
+
+  function handleSaveBudgetsValidated() {
+    let hasError = false;
+    categories.forEach(cat => {
+      const val = localBudgets[cat];
+      if (val && val.trim() !== '') {
+        const n = parseFloat(val);
+        if (isNaN(n) || n < 0) {
+          hasError = true;
+        }
+      }
+    });
+    if (hasError) {
+      Alert.alert('Invalid budget', 'Please enter valid positive numbers for budgets.');
+      return;
+    }
+    handleSaveBudgets();
+  }
+
+  function handleAddMerchantRule() {
+    const kw = newKeyword.trim();
+    if (!kw) { Alert.alert('Enter a keyword'); return; }
+    if (!newRuleCategory) { Alert.alert('Select a category'); return; }
+    const rule: MerchantRule = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      keyword: kw,
+      category: newRuleCategory,
+    };
+    dispatch({ type: 'ADD_MERCHANT_RULE', payload: rule });
+    setNewKeyword('');
+    setNewRuleCategory('');
+  }
+
+  function handleDeleteMerchantRule(id: string) {
+    Alert.alert('Delete rule', 'Remove this auto-categorization rule?', [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_MERCHANT_RULE', payload: id }) },
+    ]);
+  }
+
+  function handleAddSubscription() {
+    const name = subName.trim();
+    const amount = parseFloat(subAmount);
+    if (!name) { Alert.alert('Enter a name'); return; }
+    if (isNaN(amount) || amount <= 0) { Alert.alert('Enter a valid amount'); return; }
+    if (!subCategory) { Alert.alert('Select a category'); return; }
+    if (!subDue || !/^\d{4}-\d{2}-\d{2}$/.test(subDue)) { Alert.alert('Enter next due date as YYYY-MM-DD'); return; }
+    const sub: Subscription = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      name,
+      amount,
+      category: subCategory,
+      billingCycle: subCycle,
+      nextDueDate: subDue,
+    };
+    dispatch({ type: 'ADD_SUBSCRIPTION', payload: sub });
+    setSubName(''); setSubAmount(''); setSubCategory(''); setSubDue('');
+    setAddSubVisible(false);
+  }
+
+  function handleDeleteSubscription(id: string) {
+    Alert.alert('Delete subscription', 'Remove this subscription?', [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_SUBSCRIPTION', payload: id }) },
+    ]);
+  }
+
+  function handleImportCSV() {
+    const text = csvInput.trim();
+    if (!text) { Alert.alert('Paste CSV data first'); return; }
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    // Skip header row if it looks like one
+    const start = lines[0].toLowerCase().includes('date') ? 1 : 0;
+    let imported = 0;
+    const errors: string[] = [];
+    lines.slice(start).forEach((line, i) => {
+      // Expected columns: Date, Type, Category, Amount, Note
+      const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
+      if (cols.length < 4) { errors.push(`Row ${i + 1 + start}: too few columns`); return; }
+      const [dateStr, typeStr, cat, amtStr, ...noteParts] = cols;
+      const d = new Date(dateStr + 'T12:00:00');
+      if (isNaN(d.getTime())) { errors.push(`Row ${i + 1 + start}: invalid date "${dateStr}"`); return; }
+      const amount = parseFloat(amtStr);
+      if (isNaN(amount) || amount <= 0) { errors.push(`Row ${i + 1 + start}: invalid amount "${amtStr}"`); return; }
+      const type = typeStr.toLowerCase() === 'income' ? 'income' : 'expense';
+      const category = cat || 'Other';
+      const note = noteParts.join(',').trim();
+      dispatch({
+        type: 'ADD_TRANSACTION',
+        payload: {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2) + i,
+          amount,
+          type,
+          category,
+          note,
+          date: d.toISOString(),
+        },
+      });
+      imported++;
+    });
+    setCsvInput('');
+    setCsvModalVisible(false);
+    const msg = errors.length > 0
+      ? `Imported ${imported} transactions.\n\nSkipped ${errors.length} rows:\n${errors.slice(0, 5).join('\n')}`
+      : `Successfully imported ${imported} transactions.`;
+    Alert.alert('Import complete', msg);
   }
 
   function handleSaveApiKey() {
@@ -467,9 +607,32 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <Text style={styles.sectionTitle}>Merchant Auto-Categorization</Text>
+      <View style={styles.section}>
+        <SettingRow
+          icon="flash-outline"
+          label="Auto-Categorization Rules"
+          value={state.merchantRules?.length > 0 ? `${state.merchantRules.length} rule${state.merchantRules.length !== 1 ? 's' : ''}` : undefined}
+          onPress={() => setMerchantModalVisible(true)}
+          theme={theme}
+        />
+      </View>
+
+      <Text style={styles.sectionTitle}>Subscriptions</Text>
+      <View style={styles.section}>
+        <SettingRow
+          icon="refresh-outline"
+          label="Manage Subscriptions"
+          value={state.subscriptions?.length > 0 ? `${state.subscriptions.length} active` : undefined}
+          onPress={() => setSubModalVisible(true)}
+          theme={theme}
+        />
+      </View>
+
       <Text style={styles.sectionTitle}>{t('dataLabel')}</Text>
       <View style={styles.section}>
         <SettingRow icon="document-text-outline" label={t('exportPDF')} onPress={handleExportPDF} theme={theme} />
+        <SettingRow icon="cloud-upload-outline" label="Import CSV" onPress={() => setCsvModalVisible(true)} theme={theme} />
         <SettingRow icon="download-outline" label={t('backupData')} onPress={handleBackup} theme={theme} />
         <SettingRow icon="push-outline" label={t('restoreData')} onPress={handleRestore} theme={theme} />
         <SettingRow icon="trash-outline" label={t('clearAllData')} onPress={handleClearData} danger theme={theme} />
@@ -604,10 +767,30 @@ export default function SettingsScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              returnKeyType="send"
-              onSubmitEditing={handleSendPDF}
+              returnKeyType="next"
               autoFocus
             />
+            <Text style={{ fontSize: 12, color: theme.colors.textMuted, alignSelf: 'flex-start', marginBottom: 6 }}>Date range (optional)</Text>
+            <View style={{ flexDirection: 'row', gap: 8, width: '100%', marginBottom: 20 }}>
+              <TextInput
+                style={[styles.emailInput, { flex: 1, marginBottom: 0, paddingVertical: 10, fontSize: 13 }]}
+                placeholder="From YYYY-MM-DD"
+                placeholderTextColor={theme.colors.textFaint}
+                value={pdfDateFrom}
+                onChangeText={setPdfDateFrom}
+                maxLength={10}
+                keyboardType="numbers-and-punctuation"
+              />
+              <TextInput
+                style={[styles.emailInput, { flex: 1, marginBottom: 0, paddingVertical: 10, fontSize: 13 }]}
+                placeholder="To YYYY-MM-DD"
+                placeholderTextColor={theme.colors.textFaint}
+                value={pdfDateTo}
+                onChangeText={setPdfDateTo}
+                maxLength={10}
+                keyboardType="numbers-and-punctuation"
+              />
+            </View>
             <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
               <TouchableOpacity style={styles.emailCancelBtn} onPress={() => setEmailModalVisible(false)}>
                 <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.textMuted }}>{t('cancel')}</Text>
@@ -722,12 +905,182 @@ export default function SettingsScreen() {
                 </View>
               ))}
             </ScrollView>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleSaveBudgets}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleSaveBudgetsValidated}>
               <Text style={styles.primaryBtnText}>{t('setBudget')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+      {/* Merchant rules modal */}
+      <Modal visible={merchantModalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Auto-Categorization Rules</Text>
+              <TouchableOpacity onPress={() => setMerchantModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 12, color: theme.colors.textFaint, marginBottom: 12 }}>
+              When a transaction note contains a keyword, it automatically gets that category.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <TextInput
+                style={[styles.catInput, { flex: 1 }]}
+                placeholder="Keyword (e.g. Starbucks)"
+                placeholderTextColor={theme.colors.textFaint}
+                value={newKeyword}
+                onChangeText={setNewKeyword}
+              />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }} contentContainerStyle={{ gap: 8 }}>
+              {categories.map(cat => (
+                <TouchableOpacity key={cat} style={[styles.chip, newRuleCategory === cat && styles.chipActive]} onPress={() => setNewRuleCategory(cat)}>
+                  <Text style={[styles.chipText, newRuleCategory === cat && styles.chipTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={[styles.primaryBtn, { marginTop: 0, marginBottom: 16 }]} onPress={handleAddMerchantRule}>
+              <Text style={styles.primaryBtnText}>Add Rule</Text>
+            </TouchableOpacity>
+            <ScrollView style={{ maxHeight: 240 }}>
+              {(state.merchantRules || []).length === 0 ? (
+                <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 16 }}>No rules yet</Text>
+              ) : (state.merchantRules || []).map(rule => (
+                <View key={rule.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+                  <Ionicons name="flash-outline" size={16} color={theme.colors.primary} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>"{rule.keyword}"</Text>
+                    <Text style={{ fontSize: 12, color: theme.colors.textMuted }}>→ {rule.category}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleDeleteMerchantRule(rule.id)} style={{ padding: 8 }}>
+                    <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Subscriptions modal */}
+      <Modal visible={subModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Subscriptions</Text>
+              <TouchableOpacity onPress={() => setSubModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[styles.primaryBtn, { marginTop: 0, marginBottom: 16 }]} onPress={() => setAddSubVisible(true)}>
+              <Text style={styles.primaryBtnText}>+ Add Subscription</Text>
+            </TouchableOpacity>
+            <ScrollView style={{ maxHeight: 320 }}>
+              {(state.subscriptions || []).length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                  <Ionicons name="refresh-outline" size={40} color={theme.colors.textFaint} />
+                  <Text style={{ fontSize: 14, color: theme.colors.textFaint, marginTop: 12 }}>No subscriptions yet</Text>
+                </View>
+              ) : (state.subscriptions || []).map(sub => {
+                const fmtSub = (n: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n);
+                const daysUntil = Math.ceil((new Date(sub.nextDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                const urgent = daysUntil <= 7;
+                return (
+                  <View key={sub.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text }}>{sub.name}</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 2 }}>
+                        {fmtSub(sub.amount)} / {sub.billingCycle} · {sub.category}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: urgent ? theme.colors.danger : theme.colors.textFaint, marginTop: 1 }}>
+                        Due: {sub.nextDueDate}{urgent ? ` (${daysUntil <= 0 ? 'overdue' : `${daysUntil}d left`})` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleDeleteSubscription(sub.id)} style={{ padding: 8 }}>
+                      <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add subscription modal */}
+      <Modal visible={addSubVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Subscription</Text>
+              <TouchableOpacity onPress={() => setAddSubVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <TextInput style={styles.catInput} placeholder="Name (e.g. Netflix)" placeholderTextColor={theme.colors.textFaint} value={subName} onChangeText={setSubName} />
+              <View style={{ height: 10 }} />
+              <TextInput style={styles.catInput} placeholder="Amount" placeholderTextColor={theme.colors.textFaint} keyboardType="decimal-pad" value={subAmount} onChangeText={setSubAmount} />
+              <View style={{ height: 10 }} />
+              <TextInput style={styles.catInput} placeholder="Next due date (YYYY-MM-DD)" placeholderTextColor={theme.colors.textFaint} value={subDue} onChangeText={setSubDue} maxLength={10} />
+              <View style={{ height: 10 }} />
+              <Text style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 8 }}>Billing cycle</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                {(['monthly', 'yearly'] as const).map(c => (
+                  <TouchableOpacity key={c} style={[styles.chip, subCycle === c && styles.chipActive]} onPress={() => setSubCycle(c)}>
+                    <Text style={[styles.chipText, subCycle === c && styles.chipTextActive]}>{c.charAt(0).toUpperCase() + c.slice(1)}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 8 }}>Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+                {categories.map(cat => (
+                  <TouchableOpacity key={cat} style={[styles.chip, subCategory === cat && styles.chipActive]} onPress={() => setSubCategory(cat)}>
+                    <Text style={[styles.chipText, subCategory === cat && styles.chipTextActive]}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity style={styles.primaryBtn} onPress={handleAddSubscription}>
+                <Text style={styles.primaryBtnText}>Save Subscription</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* CSV import modal */}
+      <Modal visible={csvModalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Import CSV</Text>
+              <TouchableOpacity onPress={() => setCsvModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 12, color: theme.colors.textFaint, marginBottom: 8 }}>
+              Paste CSV data with columns:{'\n'}Date, Type (expense/income), Category, Amount, Note
+            </Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textFaint, marginBottom: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
+              2026-03-01,expense,Food & Dining,12.50,"Coffee"
+            </Text>
+            <TextInput
+              style={[styles.catInput, { height: 160, textAlignVertical: 'top', marginBottom: 16 }]}
+              multiline
+              placeholder="Paste CSV rows here..."
+              placeholderTextColor={theme.colors.textFaint}
+              value={csvInput}
+              onChangeText={setCsvInput}
+              autoFocus
+            />
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleImportCSV}>
+              <Text style={styles.primaryBtnText}>Import Transactions</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </ScrollView>
     </SafeAreaView>
   );

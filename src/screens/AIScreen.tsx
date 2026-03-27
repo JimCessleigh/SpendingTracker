@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import { sendAIMessageWithTools, ChatMessage, AIProvider } from '../utils/ai';
 import { TOOL_DEFINITIONS, executeToolCall } from '../utils/aiTools';
 import { translations } from '../i18n/translations';
 import { AppTheme } from '../constants/theme';
+import { PersistedChatMessage } from '../types';
+import { loadChatHistory, saveChatHistory, clearChatHistory } from '../storage/storage';
 import {
   format,
   startOfMonth,
@@ -248,7 +250,7 @@ function buildContext(state: ReturnType<typeof useApp>['state']): string {
       }).join('\n')
     : 'No budgets set';
 
-  const txList = transactions.slice(0, 30).map(t =>
+  const txList = transactions.slice(0, 50).map(t =>
     `[id:${t.id}] ${t.date.slice(0, 10)} | ${t.type} | ${t.amount.toFixed(2)} ${currency} | ${t.category}${t.note ? ' | ' + t.note : ''}`
   ).join('\n') || 'No transactions yet';
 
@@ -267,6 +269,10 @@ function buildContext(state: ReturnType<typeof useApp>['state']): string {
 
   const lang = (state.language === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
   const langInstruction = translations[lang].aiLanguageInstruction;
+
+  const txNote = transactions.length > 50
+    ? `\n(Showing 50 most recent of ${transactions.length} total transactions)`
+    : '';
 
   return `You are Pockyt AI, an expert financial coach and assistant built into the Pockyt spending tracker app. You have deep access to the user's financial data and can:
 - Give personalized financial insights and advice
@@ -320,7 +326,7 @@ ${goalsList}
 ${cardList}
 
 ━━━ RECENT TRANSACTIONS (use IDs for delete_transaction) ━━━
-Total in history: ${transactions.length}
+Total in history: ${transactions.length}${txNote}
 ${txList}`;
 }
 
@@ -516,6 +522,19 @@ export default function AIScreen({ visible, onClose }: Props) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const historyLoaded = useRef(false);
+
+  // Load persisted chat history on first open
+  useEffect(() => {
+    if (visible && !historyLoaded.current) {
+      historyLoaded.current = true;
+      loadChatHistory().then(history => {
+        if (history.length > 0) {
+          setMessages(history.map(m => ({ role: m.role, content: m.content, actions: m.actions })));
+        }
+      });
+    }
+  }, [visible]);
 
   const provider = (state.aiProvider || 'chatgpt') as AIProvider;
   const apiKey = state.aiKey || '';
@@ -591,7 +610,18 @@ export default function AIScreen({ visible, onClose }: Props) {
         content: reply,
         actions: collectedActions.length > 0 ? collectedActions : undefined,
       };
-      setMessages(prev => [...prev, assistantMsg]);
+      setMessages(prev => {
+        const next = [...prev, assistantMsg];
+        // Persist to storage (fire and forget)
+        const toSave: PersistedChatMessage[] = next.map(m => ({
+          role: m.role,
+          content: m.content,
+          actions: m.actions,
+          timestamp: Date.now(),
+        }));
+        saveChatHistory(toSave);
+        return next;
+      });
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err: any) {
       Alert.alert('Error', err.message || t('aiError'));
@@ -624,9 +654,24 @@ export default function AIScreen({ visible, onClose }: Props) {
               <Text style={styles.headerSub}>{PROVIDER_LABELS[provider]} · {t('yourFinancialAssistant')}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color={theme.colors.textMuted} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {messages.length > 0 && (
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={() => {
+                  Alert.alert('Clear history', 'Clear all chat history?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Clear', style: 'destructive', onPress: () => { setMessages([]); clearChatHistory(); } },
+                  ]);
+                }}
+              >
+                <Ionicons name="trash-outline" size={18} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={22} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {!apiKey && (

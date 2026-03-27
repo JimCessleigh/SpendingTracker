@@ -19,6 +19,9 @@ import { CATEGORY_COLORS } from '../constants/categories';
 import { AppTheme } from '../constants/theme';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, subMonths } from 'date-fns';
 import GoalsScreen from './GoalsScreen';
+import SpendingHeatmapScreen from './SpendingHeatmapScreen';
+import CashFlowScreen from './CashFlowScreen';
+import BillSplitScreen from './BillSplitScreen';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - 48;
@@ -33,6 +36,9 @@ export default function HomeScreen() {
   const [period, setPeriod] = useState<'month' | 'year'>('month');
   const [drillCategory, setDrillCategory] = useState<string | null>(null);
   const [goalsVisible, setGoalsVisible] = useState(false);
+  const [heatmapVisible, setHeatmapVisible] = useState(false);
+  const [cashFlowVisible, setCashFlowVisible] = useState(false);
+  const [billSplitVisible, setBillSplitVisible] = useState(false);
   const styles = useMemo(() => createStyles(theme, state.darkMode), [theme, state.darkMode]);
 
   const locale = language === 'zh' ? 'zh-CN' : 'en-US';
@@ -207,6 +213,22 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* Quick tools row */}
+        <View style={styles.quickToolsRow}>
+          {[
+            { icon: 'calendar-outline' as const, label: 'Heatmap', onPress: () => setHeatmapVisible(true) },
+            { icon: 'trending-up-outline' as const, label: 'Cash Flow', onPress: () => setCashFlowVisible(true) },
+            { icon: 'people-outline' as const, label: 'Bill Split', onPress: () => setBillSplitVisible(true) },
+          ].map(tool => (
+            <TouchableOpacity key={tool.label} style={styles.quickTool} onPress={tool.onPress}>
+              <View style={styles.quickToolIcon}>
+                <Ionicons name={tool.icon} size={22} color={theme.colors.primary} />
+              </View>
+              <Text style={styles.quickToolLabel}>{tool.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {pieData.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('spendingByCategory')}</Text>
@@ -298,6 +320,9 @@ export default function HomeScreen() {
       </ScrollView>
 
       <GoalsScreen visible={goalsVisible} onClose={() => setGoalsVisible(false)} />
+      <SpendingHeatmapScreen visible={heatmapVisible} onClose={() => setHeatmapVisible(false)} />
+      <CashFlowScreen visible={cashFlowVisible} onClose={() => setCashFlowVisible(false)} />
+      <BillSplitScreen visible={billSplitVisible} onClose={() => setBillSplitVisible(false)} />
 
       {/* Category drill-down modal */}
       <Modal
@@ -393,11 +418,23 @@ function createStyles(theme: AppTheme, darkMode: boolean) {
     expenseCard: { backgroundColor: darkMode ? '#3D1515' : '#FFEAEA' },
     cardLabel: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 4 },
     cardAmount: { fontSize: 18, fontWeight: '700', color: theme.colors.text },
+    quickToolsRow: {
+      flexDirection: 'row', gap: 12, marginBottom: 20,
+    },
+    quickTool: {
+      flex: 1, backgroundColor: theme.colors.surface, borderRadius: 14, padding: 14,
+      alignItems: 'center', gap: 8, ...theme.shadow.card,
+    },
+    quickToolIcon: {
+      width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.primary + '18',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    quickToolLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.text },
     goalsCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.lg,
       padding: 16,
-      marginBottom: 24,
+      marginBottom: 20,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',

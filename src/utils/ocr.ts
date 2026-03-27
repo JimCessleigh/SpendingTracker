@@ -112,11 +112,18 @@ export function parseOcrResponse(rawText: string): OcrResult | null {
     const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
+    // Validate date: regex match + actual calendar validity
+    let validDate: string | null = null;
+    if (typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) {
+      const d = new Date(parsed.date + 'T12:00:00');
+      if (!isNaN(d.getTime()) && d.toISOString().startsWith(parsed.date)) {
+        validDate = parsed.date;
+      }
+    }
+
     return {
       amount: typeof parsed.amount === 'number' ? parsed.amount : null,
-      date: typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
-        ? parsed.date
-        : null,
+      date: validDate,
       merchant: typeof parsed.merchant === 'string' ? parsed.merchant : null,
       category: typeof parsed.category === 'string' ? parsed.category : null,
     };

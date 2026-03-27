@@ -277,6 +277,20 @@ export const translations = {
     // Transaction date
     transactionDate: 'Date',
     today: 'Today',
+
+    // New features
+    heatmap: 'Spending Heatmap',
+    cashFlow: 'Cash Flow',
+    billSplit: 'Bill Split',
+    merchantRules: 'Auto-Categorization Rules',
+    subscriptions: 'Subscriptions',
+    importCsv: 'Import CSV',
+    bulkDelete: 'Delete Selected',
+    bulkRecategorize: 'Recategorize Selected',
+    copyTransaction: 'Duplicate Transaction',
+    cardStatement: 'Card Statement',
+    amountRange: 'Amount Range',
+    dateRange: 'Date Range',
   },
 
   zh: {
@@ -557,6 +571,20 @@ export const translations = {
     // Transaction date
     transactionDate: '日期',
     today: '今天',
+
+    // New features
+    heatmap: '消费热图',
+    cashFlow: '现金流预测',
+    billSplit: '账单分摊',
+    merchantRules: '自动分类规则',
+    subscriptions: '订阅管理',
+    importCsv: '导入CSV',
+    bulkDelete: '删除所选',
+    bulkRecategorize: '重新分类所选',
+    copyTransaction: '复制交易',
+    cardStatement: '卡片账单',
+    amountRange: '金额范围',
+    dateRange: '日期范围',
   },
 } as const;
 

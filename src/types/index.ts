@@ -9,6 +9,8 @@ export interface Transaction {
   date: string; // ISO date string
   receiptUri?: string;
   cardId?: string;
+  isSplit?: boolean;
+  splitFrom?: string; // parent transaction id
 }
 
 export interface Card {
@@ -22,6 +24,9 @@ export interface Card {
   annualFee?: number;       // e.g. 95
   anniversaryDate?: string; // "M-D" format e.g. "3-15" = March 15
   bankDomain?: string;      // clearbit domain e.g. "chase.com", absent = no logo
+  // cashback rates per category (percentage, e.g. 3 = 3%)
+  cashbackRates?: Record<string, number>;
+  defaultCashback?: number; // fallback rate for unspecified categories
 }
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
@@ -46,6 +51,49 @@ export interface Goal {
   icon?: string;
 }
 
+// Merchant auto-categorization rule
+export interface MerchantRule {
+  id: string;
+  keyword: string;   // substring match on transaction note (case-insensitive)
+  category: string;
+}
+
+// Bill split tracking
+export interface BillSplit {
+  id: string;
+  transactionId: string;
+  totalAmount: number;
+  description: string;
+  date: string;
+  participants: BillParticipant[];
+}
+
+export interface BillParticipant {
+  name: string;
+  amount: number;
+  settled: boolean;
+}
+
+// Subscription tracking (separate from recurring transactions)
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  category: string;
+  billingCycle: 'monthly' | 'yearly';
+  nextDueDate: string; // ISO date string
+  color?: string;
+  notes?: string;
+}
+
+// AI chat message for persistence
+export interface PersistedChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  actions?: string[];
+  timestamp: number;
+}
+
 export interface AppState {
   transactions: Transaction[];
   cards: Card[];
@@ -58,6 +106,10 @@ export interface AppState {
   recurringTransactions: RecurringTransaction[];
   goals: Goal[];
   darkMode: boolean;
+  merchantRules: MerchantRule[];
+  billSplits: BillSplit[];
+  subscriptions: Subscription[];
+  chatHistory: PersistedChatMessage[];
 }
 
 export type AppAction =
@@ -83,4 +135,19 @@ export type AppAction =
   | { type: 'UPDATE_GOAL'; payload: Goal }
   | { type: 'TOGGLE_DARK_MODE' }
   | { type: 'IMPORT_STATE'; payload: AppState }
-  | { type: 'LOAD_STATE'; payload: AppState };
+  | { type: 'LOAD_STATE'; payload: AppState }
+  // Merchant rules
+  | { type: 'ADD_MERCHANT_RULE'; payload: MerchantRule }
+  | { type: 'DELETE_MERCHANT_RULE'; payload: string }
+  // Bill splits
+  | { type: 'ADD_BILL_SPLIT'; payload: BillSplit }
+  | { type: 'UPDATE_BILL_SPLIT'; payload: BillSplit }
+  | { type: 'DELETE_BILL_SPLIT'; payload: string }
+  | { type: 'SETTLE_PARTICIPANT'; payload: { splitId: string; participantName: string } }
+  // Subscriptions
+  | { type: 'ADD_SUBSCRIPTION'; payload: Subscription }
+  | { type: 'UPDATE_SUBSCRIPTION'; payload: Subscription }
+  | { type: 'DELETE_SUBSCRIPTION'; payload: string }
+  // Chat history
+  | { type: 'SET_CHAT_HISTORY'; payload: PersistedChatMessage[] }
+  | { type: 'CLEAR_CHAT_HISTORY' };
