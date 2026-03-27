@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")",
+      "Bash(npx tsc:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts|md\\)$\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in [''''dependencies'''',''''devDependencies''''] if k in d}, indent=2\\)\\)\")",
+      "Bash(node -e \"const d=require\\(''''./package.json''''\\); const keys=[''''react-native-svg'''',''''expo-svg'''']; const deps={...d.dependencies,...d.devDependencies}; keys.forEach\\(k=>console.log\\(k,deps[k]\\)\\)\")"
+    ]
+  }
+}

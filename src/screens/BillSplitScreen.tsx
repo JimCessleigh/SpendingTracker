@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { AppTheme } from '../constants/theme';
 import { BillSplit, BillParticipant } from '../types';
 import { format } from 'date-fns';
+import PockytLogo from '../components/PockytLogo';
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -139,7 +140,7 @@ export default function BillSplitScreen({ visible, onClose }: Props) {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {billSplits.length === 0 ? (
             <View style={styles.empty}>
-              <Ionicons name="people-outline" size={56} color={theme.colors.textFaint} />
+              <PockytLogo variant="mascot" width={110} />
               <Text style={styles.emptyText}>No bill splits yet</Text>
               <Text style={styles.emptyHint}>Tap + to split a bill with friends</Text>
             </View>

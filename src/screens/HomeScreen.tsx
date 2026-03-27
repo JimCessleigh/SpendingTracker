@@ -22,6 +22,7 @@ import GoalsScreen from './GoalsScreen';
 import SpendingHeatmapScreen from './SpendingHeatmapScreen';
 import CashFlowScreen from './CashFlowScreen';
 import BillSplitScreen from './BillSplitScreen';
+import PockytLogo from '../components/PockytLogo';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - 48;
@@ -146,12 +147,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.header}>{t('overview')}</Text>
-            <Text style={styles.month}>
-              {period === 'month' ? format(now, 'MMMM yyyy') : format(now, 'yyyy')}
-            </Text>
-          </View>
+          <PockytLogo variant="full" width={240} />
           <View style={styles.periodToggle}>
             {(['month', 'year'] as const).map(p => (
               <TouchableOpacity
@@ -276,7 +272,7 @@ export default function HomeScreen() {
             />
           ) : (
             <View style={styles.chartEmpty}>
-              <Ionicons name="bar-chart-outline" size={40} color={theme.colors.textFaint} />
+              <PockytLogo variant="mascot" width={90} />
               <Text style={styles.chartEmptyText}>{t('noExpenseData')}</Text>
             </View>
           )}
@@ -313,6 +309,7 @@ export default function HomeScreen() {
 
         {transactions.length === 0 && (
           <View style={styles.empty}>
+            <PockytLogo variant="mascot" width={110} />
             <Text style={styles.emptyText}>{t('noTransactionsYet')}</Text>
             <Text style={styles.emptyHint}>{t('addFirstTransaction')}</Text>
           </View>
@@ -390,7 +387,7 @@ function createStyles(theme: AppTheme, darkMode: boolean) {
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       marginBottom: 16,
     },
     month: { fontSize: 14, color: theme.colors.textMuted, marginTop: 2 },

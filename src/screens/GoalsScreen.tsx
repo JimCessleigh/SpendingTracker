@@ -16,6 +16,7 @@ import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Goal } from '../types';
+import PockytLogo from '../components/PockytLogo';
 import { AppTheme } from '../constants/theme';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -275,7 +276,7 @@ export default function GoalsScreen({ visible, onClose }: Props) {
           <ScrollView style={styles.list} contentContainerStyle={goals.length === 0 ? styles.emptyContainer : { padding: 16, gap: 12 }}>
             {goals.length === 0 ? (
               <View style={styles.empty}>
-                <Ionicons name="trophy-outline" size={52} color={theme.colors.textFaint} />
+                <PockytLogo variant="mascot" width={110} />
                 <Text style={styles.emptyTitle}>{t('noGoalsYet')}</Text>
                 <Text style={styles.emptyHint}>{t('noGoalsHint')}</Text>
               </View>

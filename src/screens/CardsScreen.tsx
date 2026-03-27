@@ -23,6 +23,7 @@ import { Card } from '../types';
 import { CARD_COLORS } from '../constants/categories';
 import { detectBankDomain, logoUrl, KNOWN_BANKS, getBankInfo } from '../constants/banks';
 import { AppTheme } from '../constants/theme';
+import PockytLogo from '../components/PockytLogo';
 import {
   setupNotificationChannel,
   requestNotificationPermissions,
@@ -326,7 +327,10 @@ export default function CardsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>{t('myCards')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PockytLogo variant="card" width={48} />
+          <Text style={styles.header}>{t('myCards')}</Text>
+        </View>
         <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
@@ -351,7 +355,7 @@ export default function CardsScreen() {
         contentContainerStyle={cards.length === 0 ? styles.emptyContainer : { padding: 16, gap: 16 }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="card-outline" size={56} color={theme.colors.textFaint} />
+            <PockytLogo variant="mascot" width={110} />
             <Text style={styles.emptyText}>{t('noCardsYet')}</Text>
             <Text style={styles.emptyHint}>{t('addCardsHint')}</Text>
           </View>

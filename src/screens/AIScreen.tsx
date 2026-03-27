@@ -20,6 +20,7 @@ import * as MailComposer from 'expo-mail-composer';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
+import PockytLogo from '../components/PockytLogo';
 import { sendAIMessageWithTools, ChatMessage, AIProvider } from '../utils/ai';
 import { TOOL_DEFINITIONS, executeToolCall } from '../utils/aiTools';
 import { translations } from '../i18n/translations';
@@ -360,10 +361,8 @@ function createStyles(theme: AppTheme, darkMode: boolean) {
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     avatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.colors.primary,
+      width: 52,
+      height: 52,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -392,13 +391,11 @@ function createStyles(theme: AppTheme, darkMode: boolean) {
     messagesContent: { padding: 16, paddingBottom: 8 },
     welcomeContainer: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 4 },
     welcomeAvatar: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: darkMode ? '#2D2A4A' : '#EEE9FF',
+      width: 96,
+      height: 96,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 12,
+      marginBottom: 16,
     },
     welcomeTitle: { fontSize: 22, fontWeight: '700', color: theme.colors.text, marginBottom: 8 },
     welcomeText: { fontSize: 14, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
@@ -443,10 +440,8 @@ function createStyles(theme: AppTheme, darkMode: boolean) {
     msgRowUser: { justifyContent: 'flex-end' },
     msgRowAI: { justifyContent: 'flex-start' },
     msgAvatar: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: darkMode ? '#2D2A4A' : '#EEE9FF',
+      width: 32,
+      height: 32,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
@@ -647,7 +642,7 @@ export default function AIScreen({ visible, onClose }: Props) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.avatar}>
-              <Ionicons name="sparkles" size={20} color="#fff" />
+              <PockytLogo variant="mascot" width={52} />
             </View>
             <View>
               <Text style={styles.headerTitle}>Pockyt AI</Text>
@@ -694,7 +689,7 @@ export default function AIScreen({ visible, onClose }: Props) {
             {messages.length === 0 && (
               <View style={styles.welcomeContainer}>
                 <View style={styles.welcomeAvatar}>
-                  <Ionicons name="sparkles" size={32} color={theme.colors.primary} />
+                  <PockytLogo variant="mascot" width={96} />
                 </View>
                 <Text style={styles.welcomeTitle}>{t('hiImPockyt')}</Text>
                 <Text style={styles.welcomeText}>{t('welcomeText')}</Text>
@@ -729,7 +724,7 @@ export default function AIScreen({ visible, onClose }: Props) {
                 <View style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAI]}>
                   {msg.role === 'assistant' && (
                     <View style={styles.msgAvatar}>
-                      <Ionicons name="sparkles" size={13} color={theme.colors.primary} />
+                      <PockytLogo variant="mascot" width={32} />
                     </View>
                   )}
                   <View style={[styles.msgBubble, msg.role === 'user' ? styles.msgBubbleUser : styles.msgBubbleAI]}>
@@ -758,7 +753,7 @@ export default function AIScreen({ visible, onClose }: Props) {
             {loading && (
               <View style={[styles.msgRow, styles.msgRowAI]}>
                 <View style={styles.msgAvatar}>
-                  <Ionicons name="sparkles" size={13} color={theme.colors.primary} />
+                  <PockytLogo variant="mascot" width={32} />
                 </View>
                 <View style={[styles.msgBubble, styles.msgBubbleAI, { paddingHorizontal: 20 }]}>
                   <ActivityIndicator size="small" color={theme.colors.primary} />

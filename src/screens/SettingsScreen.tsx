@@ -27,6 +27,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { clearState, defaultState, exportState, importState } from '../storage/storage';
 import { AppTheme } from '../constants/theme';
 import { MerchantRule, Subscription } from '../types';
+import PockytLogo from '../components/PockytLogo';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'HKD', 'SGD', 'AUD', 'CAD'];
 
@@ -479,7 +480,10 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.header}>{t('settingsHeader')}</Text>
+      <View style={styles.settingsHeaderRow}>
+        <PockytLogo variant="mascot" width={48} />
+        <Text style={styles.header}>{t('settingsHeader')}</Text>
+      </View>
 
       {/* Appearance */}
       <Text style={styles.sectionTitle}>{t('appearance')}</Text>
@@ -666,10 +670,8 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
             <View style={{ alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8 }}>
-              <View style={[styles.aboutIcon, { backgroundColor: theme.colors.primary + '18' }]}>
-                <Ionicons name="wallet" size={40} color={theme.colors.primary} />
-              </View>
-              <Text style={[styles.aboutTitle, { color: theme.colors.text }]}>{t('aboutTitle')}</Text>
+              <PockytLogo variant="mascot" width={80} />
+              <Text style={[styles.aboutTitle, { color: theme.colors.text, marginTop: 16 }]}>{t('aboutTitle')}</Text>
               <Text style={{ fontSize: 13, color: theme.colors.textFaint, marginBottom: 16 }}>{t('aboutVersion')}</Text>
               <Text style={{ fontSize: 14, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 20 }}>{t('aboutDesc')}</Text>
               <Text style={{ fontSize: 12, color: theme.colors.textFaint, textAlign: 'center' }}>{t('aboutBuiltWith')}</Text>
@@ -1090,7 +1092,8 @@ function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 16, paddingBottom: 40 },
-    header: { fontSize: 28, fontWeight: '800', color: theme.colors.text, marginBottom: 20 },
+    settingsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+    header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
     sectionTitle: { fontSize: 12, fontWeight: '700', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 16, paddingLeft: 4 },
     section: {
       backgroundColor: theme.colors.surface,

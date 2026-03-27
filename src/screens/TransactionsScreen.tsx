@@ -23,6 +23,7 @@ import { Transaction, RecurringFrequency, Card, MerchantRule } from '../types';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../constants/categories';
 import { AppTheme } from '../constants/theme';
 import { format } from 'date-fns';
+import PockytLogo from '../components/PockytLogo';
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -470,7 +471,10 @@ export default function TransactionsScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.header}>{t('transactions')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <PockytLogo variant="spending" width={48} />
+              <Text style={styles.header}>{t('transactions')}</Text>
+            </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {cards.length > 0 && (
                 <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }]} onPress={() => setCardStatementVisible(true)}>
@@ -628,7 +632,7 @@ export default function TransactionsScreen() {
         onEndReachedThreshold={0.3}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="receipt-outline" size={48} color={theme.colors.textFaint} />
+            <PockytLogo variant="mascot" width={110} />
             <Text style={styles.emptyText}>{t('noTransactions')}</Text>
             <Text style={styles.emptyHint}>{t('tapToAdd')}</Text>
           </View>
