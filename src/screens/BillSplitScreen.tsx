@@ -116,7 +116,7 @@ export default function BillSplitScreen({ visible, onClose }: Props) {
   );
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>

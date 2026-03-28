@@ -975,8 +975,8 @@ function createStyles(theme: AppTheme) {
       borderTopWidth: 1, borderTopColor: theme.colors.border,
     },
     loadMoreText: { color: theme.colors.primary, fontSize: 14, fontWeight: '600' },
-    emptyContainer: { flex: 1, justifyContent: 'center' },
-    empty: { alignItems: 'center', paddingTop: 80 },
+    emptyContainer: { flexGrow: 1, justifyContent: 'center' },
+    empty: { alignItems: 'center', justifyContent: 'center' },
     emptyText: { fontSize: 16, color: theme.colors.textMuted, fontWeight: '500', marginTop: 12 },
     emptyHint: { fontSize: 13, color: theme.colors.textFaint, marginTop: 4 },
     bulkCatRow: {

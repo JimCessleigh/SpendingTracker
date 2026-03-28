@@ -28,6 +28,7 @@ import { CATEGORY_COLORS } from '../constants/categories';
 import { AppTheme } from '../constants/theme';
 import { scanReceiptWithOcr } from '../utils/ocr';
 import { loadPhotos, savePhotos } from '../storage/storage';
+import PockytLogo from '../components/PockytLogo';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const THUMB_SIZE = (SCREEN_WIDTH - 48) / 3;
@@ -226,7 +227,10 @@ export default function CameraScreen() {
       />
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>{t('receiptsHeader')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PockytLogo variant="mascot" width={48} />
+          <Text style={styles.header}>{t('receiptsHeader')}</Text>
+        </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity style={styles.galleryBtn} onPress={pickFromGallery}>
             <Ionicons name="images-outline" size={20} color={theme.colors.primary} />
@@ -240,7 +244,7 @@ export default function CameraScreen() {
 
       {photos.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="receipt-outline" size={64} color={theme.colors.textFaint} />
+          <PockytLogo variant="mascot" width={110} />
           <Text style={styles.emptyText}>{t('noReceiptsYet')}</Text>
           <Text style={styles.emptyHint}>{t('scanReceiptHint')}</Text>
           <TouchableOpacity style={styles.captureBtn2} onPress={() => setCameraVisible(true)}>
@@ -398,7 +402,7 @@ export default function CameraScreen() {
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    outerContainer: { flex: 1, backgroundColor: '#000' },
+    outerContainer: { flex: 1, backgroundColor: theme.colors.background },
     container: { flex: 1 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: theme.colors.background },
     headerRow: {

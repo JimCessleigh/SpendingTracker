@@ -86,7 +86,7 @@ export default function SpendingHeatmapScreen({ visible, onClose }: Props) {
   const peakDay = Object.entries(dailyTotals).sort(([, a], [, b]) => b - a)[0];
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>

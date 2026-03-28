@@ -81,7 +81,7 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
   const currentNet = history.reduce((s, m) => s + m.net, 0);
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.container}>
         <LinearGradient
           colors={theme.gradients.background}
@@ -206,7 +206,7 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' }, // fallback
+    container: { flex: 1, backgroundColor: theme.colors.background },
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       padding: 16, borderBottomWidth: 1, borderBottomColor: theme.glass.border,

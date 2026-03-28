@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -45,7 +46,13 @@ export default function HomeScreen() {
   const styles = useMemo(() => createStyles(theme, state.darkMode), [theme, state.darkMode]);
 
   const locale = language === 'zh' ? 'zh-CN' : 'en-US';
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  // Refresh date at midnight so period calculations stay accurate
+  useEffect(() => {
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime();
+    const timer = setTimeout(() => setNow(new Date()), msUntilMidnight + 100);
+    return () => clearTimeout(timer);
+  }, [now]);
   // Stable key that changes when the current month/year changes, used as useMemo dep
   const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
   const yearKey = `${now.getFullYear()}`;
@@ -131,7 +138,7 @@ export default function HomeScreen() {
       data.push(total);
     }
     return { labels, datasets: [{ data: data.length > 0 ? data : [0] }] };
-  }, [transactions, period, monthKey]);
+  }, [transactions, period, monthKey, yearKey]);
 
   const hasBarData = barData.datasets[0].data.some(v => v > 0);
 
@@ -308,7 +315,8 @@ export default function HomeScreen() {
         transparent
         onRequestClose={() => setDrillCategory(null)}
       >
-        <View style={styles.modalOverlay}>
+        <Pressable style={styles.modalOverlay} onPress={() => setDrillCategory(null)}>
+          <Pressable style={{ flex: 0 }} onPress={e => e.stopPropagation()}>
           <BlurView intensity={60} tint={state.darkMode ? 'dark' : 'light'} style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -353,7 +361,8 @@ export default function HomeScreen() {
               }
             />
           </BlurView>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
       </SafeAreaView>
     </View>
@@ -362,7 +371,7 @@ export default function HomeScreen() {
 
 function createStyles(theme: AppTheme, darkMode: boolean) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' }, 
+    container: { flex: 1, backgroundColor: theme.colors.background },
     safeArea: { flex: 1 },
     content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 110 },
     headerRow: {
@@ -414,7 +423,7 @@ function createStyles(theme: AppTheme, darkMode: boolean) {
     
     // Tools
     bentoTool: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 6 },
-    bentoToolLabel: { fontSize: 10, fontWeight: '600', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' },
+    bentoToolLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' },
     
     // Top Cat
     catHugeDot: { width: 40, height: 40, borderRadius: 20 },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +59,17 @@ function AppInner() {
 
   return (
     <View style={styles.container}>
-      <NavigationContainer>
+      <NavigationContainer theme={{
+        ...(state.darkMode ? DarkTheme : DefaultTheme),
+        colors: {
+          ...(state.darkMode ? DarkTheme : DefaultTheme).colors,
+          background: theme.colors.background,
+          card: theme.colors.background,
+          border: theme.glass.border,
+          primary: theme.colors.primary,
+          text: theme.colors.text,
+        },
+      }}>
         <StatusBar style={state.darkMode ? 'light' : 'dark'} />
         {state.hasCompletedOnboarding ? <BottomTabNavigator /> : <OnboardingScreen />}
       </NavigationContainer>
@@ -75,13 +85,24 @@ function AppInner() {
   );
 }
 
+function RootWrapper({ children }: { children: React.ReactNode }) {
+  const { state } = useApp();
+  return (
+    <View style={{ flex: 1, backgroundColor: state.darkMode ? '#000000' : '#FFFFFF' }}>
+      {children}
+    </View>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <ThemeProvider>
-          <AppInner />
-        </ThemeProvider>
+        <RootWrapper>
+          <ThemeProvider>
+            <AppInner />
+          </ThemeProvider>
+        </RootWrapper>
       </AppProvider>
     </SafeAreaProvider>
   );

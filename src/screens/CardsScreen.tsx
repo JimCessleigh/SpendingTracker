@@ -56,7 +56,7 @@ function ordinal(day: number): string {
 
 function parseDueDay(dueDate: string): number {
   const parts = dueDate.split('-').map(Number);
-  return parts[parts.length - 1];
+  return parts[parts.length - 1] || 1;
 }
 
 function daysUntilDue(dueDate: string): number {
@@ -137,7 +137,6 @@ function CardItem({
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => onEdit(card)}
-      onLongPress={() => onDelete(card.id)}
     >
       <LinearGradient
         colors={[card.color, card.color + 'aa', card.color + '66']}
@@ -285,7 +284,15 @@ export default function CardsScreen() {
     setModalVisible(true);
   }
 
+  function maxDaysInMonth(month: number): number {
+    // Month is 1-indexed; use non-leap year for anniversary
+    return new Date(2024, month, 0).getDate();
+  }
+
   function buildCard(id: string, reminderEnabled?: boolean): Card {
+    const clampedAnniversaryDay = hasAnniversary
+      ? Math.min(anniversaryDay, maxDaysInMonth(anniversaryMonth))
+      : anniversaryDay;
     return {
       id,
       name: name.trim(),
@@ -295,7 +302,7 @@ export default function CardsScreen() {
       color: selectedColor,
       reminderEnabled,
       annualFee: annualFee.trim() ? Math.max(0, parseFloat(annualFee)) : undefined,
-      anniversaryDate: hasAnniversary ? `${anniversaryMonth}-${anniversaryDay}` : undefined,
+      anniversaryDate: hasAnniversary ? `${anniversaryMonth}-${clampedAnniversaryDay}` : undefined,
       bankDomain: bankDomain || undefined,
     };
   }
@@ -311,7 +318,10 @@ export default function CardsScreen() {
     if (editingCard) {
       const updated = buildCard(editingCard.id, editingCard.reminderEnabled);
       dispatch({ type: 'UPDATE_CARD', payload: updated });
-      if (editingCard.reminderEnabled) scheduleCardReminder(updated, language);
+      if (updated.reminderEnabled) {
+        cancelCardReminder(updated.id);
+        scheduleCardReminder(updated, language);
+      }
     } else {
       dispatch({ type: 'ADD_CARD', payload: buildCard(generateId()) });
     }
@@ -510,7 +520,11 @@ export default function CardsScreen() {
                     <Text style={styles.pickerHeader}>{t('month')}</Text>
                     <Picker
                       selectedValue={anniversaryMonth}
-                      onValueChange={(v) => setAnniversaryMonth(v)}
+                      onValueChange={(v) => {
+                        setAnniversaryMonth(v);
+                        const max = new Date(2024, v, 0).getDate();
+                        if (anniversaryDay > max) setAnniversaryDay(max);
+                      }}
                       style={styles.picker}
                       itemStyle={styles.pickerItem}
                     >
@@ -528,7 +542,7 @@ export default function CardsScreen() {
                       style={styles.picker}
                       itemStyle={styles.pickerItem}
                     >
-                      {DAYS.map(d => (
+                      {DAYS.filter(d => d <= new Date(2024, anniversaryMonth, 0).getDate()).map(d => (
                         <Picker.Item key={d} label={String(d)} value={d} />
                       ))}
                     </Picker>
@@ -626,8 +640,8 @@ function createStyles(theme: AppTheme) {
     },
     extraItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     extraText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', flex: 1, fontWeight: '600' },
-    emptyContainer: { flex: 1, justifyContent: 'center', width: SCREEN_WIDTH },
-    empty: { alignItems: 'center', paddingHorizontal: 32 },
+    emptyContainer: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', width: SCREEN_WIDTH },
+    empty: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
     emptyText: { fontSize: 20, fontWeight: '500', color: theme.colors.textMuted, marginTop: 16 },
     emptyHint: { fontSize: 14, color: theme.colors.textFaint, marginTop: 8, textAlign: 'center' },
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingBottom: 24 },
