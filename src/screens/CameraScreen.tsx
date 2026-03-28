@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -216,7 +217,14 @@ export default function CameraScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.outerContainer}>
+      <LinearGradient
+        colors={theme.gradients.background}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>{t('receiptsHeader')}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -384,21 +392,24 @@ export default function CameraScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
+    outerContainer: { flex: 1, backgroundColor: '#000' },
+    container: { flex: 1 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: theme.colors.background },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 16,
-      paddingTop: 20,
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 16,
     },
-    header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
+    header: { fontSize: 28, fontWeight: '400', color: theme.colors.text },
     galleryBtn: {
       width: 42,
       height: 42,

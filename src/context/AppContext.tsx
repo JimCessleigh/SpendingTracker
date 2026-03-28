@@ -154,6 +154,10 @@ function reducer(state: AppState, action: AppAction): AppState {
     case 'CLEAR_CHAT_HISTORY':
       return { ...state, chatHistory: [] };
 
+    // Onboarding
+    case 'COMPLETE_ONBOARDING':
+      return { ...state, hasCompletedOnboarding: true };
+
     default:
       return state;
   }

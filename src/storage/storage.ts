@@ -22,6 +22,7 @@ export const defaultState: AppState = {
   billSplits: [],
   subscriptions: [],
   chatHistory: [],
+  hasCompletedOnboarding: false,
 };
 
 export async function loadState(): Promise<AppState> {

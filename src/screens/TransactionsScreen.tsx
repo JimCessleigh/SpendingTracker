@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -119,7 +121,13 @@ function TransactionItem({
       onPress={() => selectMode ? onToggleSelect(item.id) : undefined}
       onLongPress={handleLongPress}
       activeOpacity={0.7}
+      style={styles.timelineWrapper}
     >
+      <View style={styles.timelineAxis}>
+        <View style={styles.timelineStem} />
+        <View style={[styles.timelineNode, { borderColor: CATEGORY_COLORS[item.category] || theme.colors.primary }]} />
+      </View>
+
       <View style={[styles.item, selected && styles.itemSelected]}>
         {selectMode && (
           <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
@@ -129,7 +137,7 @@ function TransactionItem({
         <View style={[styles.iconBg, { backgroundColor: (CATEGORY_COLORS[item.category] || '#888') + '22' }]}>
           <Ionicons
             name={(CATEGORY_ICONS[item.category] || 'ellipsis-horizontal') as any}
-            size={20}
+            size={22}
             color={CATEGORY_COLORS[item.category] || theme.colors.textMuted}
           />
         </View>
@@ -396,7 +404,7 @@ export default function TransactionsScreen() {
   }
 
   function handleBulkDelete() {
-    Alert.alert('Delete transactions', `Delete ${selectedIds.size} transaction(s)?`, [
+    Alert.alert(t('deleteTransactions'), t('deleteNTransactions')(selectedIds.size), [
       { text: t('cancel'), style: 'cancel' },
       {
         text: t('delete'), style: 'destructive', onPress: () => {
@@ -431,7 +439,7 @@ export default function TransactionsScreen() {
     return Object.entries(byMonth).sort(([a], [b]) => b.localeCompare(a));
   }, [transactions, statementCardId]);
 
-  const renderItem = useCallback(({ item }: { item: Transaction }) => (
+  const renderItem = ({ item }: { item: Transaction }) => (
     <TransactionItem
       item={item}
       currency={currency}
@@ -446,20 +454,27 @@ export default function TransactionsScreen() {
       selectMode={selectMode}
       onToggleSelect={toggleSelect}
     />
-  ), [currency, locale, cards, theme, styles, selectedIds, selectMode]);
+  );
 
   const activeFilterCount = [filterMonth, filterCategory, minAmount, maxAmount, dateFrom, dateTo].filter(Boolean).length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <View style={styles.container}>
+      <LinearGradient
+        colors={theme.gradients.background}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header */}
       <View style={styles.headerRow}>
         {selectMode ? (
           <>
             <TouchableOpacity onPress={exitSelectMode} style={styles.cancelBtn}>
               <Ionicons name="close" size={22} color={theme.colors.textMuted} />
             </TouchableOpacity>
-            <Text style={styles.header}>{selectedIds.size} selected</Text>
+            <Text style={styles.header}>{t('nSelected')(selectedIds.size)}</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.colors.primary }]} onPress={() => setBulkCatModalVisible(true)} disabled={selectedIds.size === 0}>
                 <Ionicons name="pricetag-outline" size={20} color="#fff" />
@@ -518,7 +533,7 @@ export default function TransactionsScreen() {
       {/* Advanced filters */}
       {showAdvancedFilters && (
         <View style={styles.advancedFilters}>
-          <Text style={styles.advancedLabel}>Amount range</Text>
+          <Text style={styles.advancedLabel}>{t('amountRange')}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
             <TextInput
               style={[styles.advancedInput, { flex: 1 }]}
@@ -538,7 +553,7 @@ export default function TransactionsScreen() {
               onChangeText={val => { setMaxAmount(val); setPage(1); }}
             />
           </View>
-          <Text style={styles.advancedLabel}>Date range (YYYY-MM-DD)</Text>
+          <Text style={styles.advancedLabel}>{t('dateRangeFormat')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
               style={[styles.advancedInput, { flex: 1 }]}
@@ -560,7 +575,7 @@ export default function TransactionsScreen() {
           </View>
           {(minAmount || maxAmount || dateFrom || dateTo) && (
             <TouchableOpacity onPress={() => { setMinAmount(''); setMaxAmount(''); setDateFrom(''); setDateTo(''); setPage(1); }} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
-              <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>Clear filters</Text>
+              <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>{t('clearFilters')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -590,21 +605,25 @@ export default function TransactionsScreen() {
 
       {/* Month filter */}
       {months.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
-          <TouchableOpacity style={[styles.filterChip, !filterMonth && styles.filterChipActive]} onPress={() => { setFilterMonth(''); setPage(1); }}>
-            <Text style={[styles.filterChipText, !filterMonth && styles.filterChipTextActive]}>{t('all')}</Text>
-          </TouchableOpacity>
-          {months.map(m => (
-            <TouchableOpacity key={m} style={[styles.filterChip, filterMonth === m && styles.filterChipActive]} onPress={() => { setFilterMonth(m); setPage(1); }}>
-              <Text style={[styles.filterChipText, filterMonth === m && styles.filterChipTextActive]}>
-                {format(new Date(m + '-01'), 'MMM yyyy')}
-              </Text>
+        <>
+          <Text style={styles.filterSectionLabel}>{t('month')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
+            <TouchableOpacity style={[styles.filterChip, !filterMonth && styles.filterChipActive]} onPress={() => { setFilterMonth(''); setPage(1); }}>
+              <Text style={[styles.filterChipText, !filterMonth && styles.filterChipTextActive]}>{t('all')}</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+            {months.map(m => (
+              <TouchableOpacity key={m} style={[styles.filterChip, filterMonth === m && styles.filterChipActive]} onPress={() => { setFilterMonth(m); setPage(1); }}>
+                <Text style={[styles.filterChipText, filterMonth === m && styles.filterChipTextActive]}>
+                  {format(new Date(m + '-01'), 'MMM yyyy')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </>
       )}
 
       {/* Category filter */}
+      <Text style={styles.filterSectionLabel}>{t('category')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
         <TouchableOpacity style={[styles.filterChip, !filterCategory && styles.filterChipActive]} onPress={() => { setFilterCategory(''); setPage(1); }}>
           <Text style={[styles.filterChipText, !filterCategory && styles.filterChipTextActive]}>{t('all')}</Text>
@@ -632,25 +651,25 @@ export default function TransactionsScreen() {
         onEndReachedThreshold={0.3}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <PockytLogo variant="mascot" width={110} />
+            <PockytLogo variant="spending" width={110} />
             <Text style={styles.emptyText}>{t('noTransactions')}</Text>
             <Text style={styles.emptyHint}>{t('tapToAdd')}</Text>
           </View>
         }
         ListFooterComponent={hasMore ? (
           <TouchableOpacity style={styles.loadMoreBtn} onPress={() => setPage(p => p + 1)}>
-            <Text style={styles.loadMoreText}>Load more ({filtered.length - paginated.length} remaining)</Text>
+            <Text style={styles.loadMoreText}>{t('loadMoreN')(filtered.length - paginated.length)}</Text>
           </TouchableOpacity>
         ) : null}
       />
 
       {/* Undo toast */}
-      <UndoToast visible={undoVisible} message="Transaction deleted" onUndo={handleUndo} theme={theme} />
+      <UndoToast visible={undoVisible} message={t('transactionDeleted')} onUndo={handleUndo} theme={theme} />
 
       {/* ── Add/Edit modal ─────────────────────────────────────────── */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={resetForm}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{editingTx ? t('editTransaction') : t('addTransaction')}</Text>
               <TouchableOpacity onPress={resetForm}>
@@ -769,16 +788,16 @@ export default function TransactionsScreen() {
                 <Text style={styles.saveBtnText}>{editingTx ? t('updateTransaction') : t('saveTransaction')}</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
+          </BlurView>
         </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Bulk recategorize modal ─────────────────────────────────── */}
       <Modal visible={bulkCatModalVisible} animationType="slide" transparent onRequestClose={() => setBulkCatModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '60%' }]}>
+          <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={[styles.modalSheet, { maxHeight: '60%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</Text>
+              <Text style={styles.modalTitle}>{t('recategorizeN')(selectedIds.size)}</Text>
               <TouchableOpacity onPress={() => setBulkCatModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textMuted} />
               </TouchableOpacity>
@@ -793,16 +812,16 @@ export default function TransactionsScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </BlurView>
         </View>
       </Modal>
 
       {/* ── Card statement modal ───────────────────────────────────── */}
       <Modal visible={cardStatementVisible} animationType="slide" transparent onRequestClose={() => setCardStatementVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: '90%' }]}>
+          <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={[styles.modalSheet, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Card Statement</Text>
+              <Text style={styles.modalTitle}>{t('cardStatement')}</Text>
               <TouchableOpacity onPress={() => setCardStatementVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textMuted} />
               </TouchableOpacity>
@@ -822,7 +841,7 @@ export default function TransactionsScreen() {
             {statementCardId ? (
               <ScrollView style={{ flex: 1 }}>
                 {statementData.length === 0 ? (
-                  <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 32 }}>No transactions for this card</Text>
+                  <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 32 }}>{t('noTransactionsForCard')}</Text>
                 ) : statementData.map(([month, txs]) => {
                   const total = txs.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
                   return (
@@ -848,32 +867,35 @@ export default function TransactionsScreen() {
                 })}
               </ScrollView>
             ) : (
-              <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 32 }}>Select a card above</Text>
+              <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 32 }}>{t('selectCardAbove')}</Text>
             )}
-          </View>
+          </BlurView>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
+    container: { flex: 1, backgroundColor: '#000' }, // fallback
+    safeArea: { flex: 1 },
     headerRow: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      padding: 16, paddingTop: 20,
+      paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16,
     },
-    header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
+    header: { fontSize: 28, fontWeight: '400', color: theme.colors.text },
     cancelBtn: { padding: 4 },
     addBtn: {
       backgroundColor: theme.colors.primary, width: 44, height: 44,
       borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+      ...theme.shadow.card,
     },
     searchRow: {
-      flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface,
-      marginHorizontal: 16, marginBottom: 10, borderRadius: 12, paddingHorizontal: 12,
-      borderWidth: 1, borderColor: theme.colors.border,
+      flexDirection: 'row', alignItems: 'center', backgroundColor: theme.glass.background,
+      marginHorizontal: 16, marginBottom: 10, borderRadius: 16, paddingHorizontal: 16,
+      borderWidth: 1, borderColor: theme.glass.border,
     },
     searchIcon: { marginRight: 8 },
     searchInput: { flex: 1, fontSize: 15, paddingVertical: 10, color: theme.colors.text },
@@ -884,19 +906,19 @@ function createStyles(theme: AppTheme) {
     },
     filterBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
     advancedFilters: {
-      marginHorizontal: 16, marginBottom: 10, padding: 14,
-      backgroundColor: theme.colors.surface, borderRadius: 12,
-      borderWidth: 1, borderColor: theme.colors.border,
+      marginHorizontal: 16, marginBottom: 10, padding: 16,
+      backgroundColor: theme.glass.background, borderRadius: 16,
+      borderWidth: 1, borderColor: theme.glass.border,
     },
-    advancedLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+    advancedLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
     advancedInput: {
-      borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 8,
-      fontSize: 14, color: theme.colors.text, backgroundColor: theme.colors.surfaceMuted,
+      borderWidth: 1, borderColor: theme.glass.border, borderRadius: 10, padding: 10,
+      fontSize: 14, color: theme.colors.text, backgroundColor: 'rgba(0,0,0,0.1)',
     },
-    typeFilterRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, gap: 8 },
+    typeFilterRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, gap: 8 },
     typeFilterChip: {
-      flex: 1, paddingVertical: 7, borderRadius: 10, backgroundColor: theme.colors.surface,
-      borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center',
+      flex: 1, paddingVertical: 8, borderRadius: 12, backgroundColor: theme.glass.background,
+      borderWidth: 1, borderColor: theme.glass.border, alignItems: 'center',
     },
     typeFilterAllActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     typeFilterExpenseActive: { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
@@ -906,16 +928,23 @@ function createStyles(theme: AppTheme) {
     filterBar: { maxHeight: 44 },
     filterContent: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
     filterChip: {
-      paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-      backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
+      paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+      backgroundColor: theme.glass.background, borderWidth: 1, borderColor: theme.glass.border,
     },
     filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     filterChipText: { fontSize: 13, color: theme.colors.textMuted },
     filterChipTextActive: { color: '#fff', fontWeight: '600' },
-    resultCount: { fontSize: 12, color: theme.colors.textFaint, paddingHorizontal: 16, marginBottom: 4, marginTop: 4 },
+    resultCount: { fontSize: 13, fontWeight: '500', color: theme.colors.textMuted, paddingHorizontal: 16, marginBottom: 12, marginTop: 4 },
+    filterSectionLabel: { fontSize: 10, fontWeight: '700', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 16, marginBottom: 6, marginTop: 4 },
+    timelineWrapper: { flexDirection: 'row' },
+    timelineAxis: { width: 32, alignItems: 'center' },
+    timelineStem: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: theme.glass.border },
+    timelineNode: { position: 'absolute', top: 32, width: 14, height: 14, borderRadius: 7, borderWidth: 3.5, backgroundColor: theme.colors.background },
     item: {
-      backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: 14,
-      flexDirection: 'row', alignItems: 'center', gap: 12, ...theme.shadow.card,
+      flex: 1, backgroundColor: theme.glass.background, borderRadius: 24, padding: 16,
+      flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderColor: theme.glass.border,
+      ...theme.shadow.card,
+      marginBottom: 16,
     },
     itemSelected: { borderWidth: 2, borderColor: theme.colors.primary },
     checkbox: {
@@ -933,8 +962,8 @@ function createStyles(theme: AppTheme) {
       flexDirection: 'row', alignItems: 'center', gap: 3,
       paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
     },
-    cardBadgeText: { fontSize: 10, fontWeight: '600' },
-    itemAmount: { fontSize: 16, fontWeight: '700' },
+    cardBadgeText: { fontSize: 10, fontWeight: '700' },
+    itemAmount: { fontSize: 18, fontWeight: '500' },
     actionBtn: { padding: 8 },
     cashbackHint: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -966,13 +995,13 @@ function createStyles(theme: AppTheme) {
     },
     statementDate: { fontSize: 12, color: theme.colors.textMuted, width: 44 },
     noCardChipActive: { backgroundColor: theme.colors.primary },
-    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingBottom: 24 },
     modalSheet: {
-      backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-      padding: 24, paddingBottom: 40, maxHeight: '90%',
+      backgroundColor: theme.glass.background, borderWidth: 1, borderColor: theme.glass.border,
+      borderRadius: 32, padding: 24, paddingBottom: 40, maxHeight: '90%', overflow: 'hidden',
     },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text },
+    modalTitle: { fontSize: 20, fontWeight: '400', color: theme.colors.text },
     typeToggle: {
       flexDirection: 'row', backgroundColor: theme.colors.surfaceMuted,
       borderRadius: 12, padding: 4, marginBottom: 16,
@@ -983,22 +1012,22 @@ function createStyles(theme: AppTheme) {
     typeBtnText: { fontSize: 14, fontWeight: '600', color: theme.colors.textMuted },
     typeBtnTextActive: { color: '#fff' },
     input: {
-      borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: 14,
-      fontSize: 16, marginBottom: 12, backgroundColor: theme.colors.surfaceMuted, color: theme.colors.text,
+      borderWidth: 1, borderColor: theme.glass.border, borderRadius: 16, padding: 16,
+      fontSize: 16, marginBottom: 16, backgroundColor: 'rgba(0,0,0,0.08)', color: theme.colors.text,
     },
     inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, marginBottom: 8 },
-    dateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-    dateChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted },
-    dateChipActive: { backgroundColor: theme.colors.primary },
+    dateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+    dateChip: { paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.08)', borderWidth: 1, borderColor: theme.glass.border },
+    dateChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     dateChipText: { fontSize: 14, fontWeight: '600', color: theme.colors.textMuted },
     dateChipTextActive: { color: '#fff' },
     dateInput: { flex: 1, marginBottom: 0 },
-    catScroll: { marginBottom: 16 },
+    catScroll: { marginBottom: 20 },
     catChip: {
-      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-      backgroundColor: theme.colors.surfaceMuted, marginRight: 8,
+      paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+      backgroundColor: 'rgba(0,0,0,0.08)', marginRight: 8, borderWidth: 1, borderColor: theme.glass.border,
     },
-    catChipText: { fontSize: 13, color: theme.colors.textMuted },
+    catChipText: { fontSize: 14, color: theme.colors.textMuted, fontWeight: '500' },
     catChipTextActive: { color: '#fff', fontWeight: '600' },
     recurringRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     freqRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },

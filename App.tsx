@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { AppProvider, useApp } from './src/context/AppContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AppTheme } from './src/constants/theme';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import AIScreen from './src/screens/AIScreen';
 import {
   setupNotificationChannel,
@@ -20,7 +21,7 @@ function createStyles(theme: AppTheme) {
     container: { flex: 1, backgroundColor: theme.colors.background },
     fab: {
       position: 'absolute',
-      bottom: 90,
+      bottom: Platform.OS === 'ios' ? 120 : 100,
       right: 20,
       width: 52,
       height: 52,
@@ -60,12 +61,14 @@ function AppInner() {
     <View style={styles.container}>
       <NavigationContainer>
         <StatusBar style={state.darkMode ? 'light' : 'dark'} />
-        <BottomTabNavigator />
+        {state.hasCompletedOnboarding ? <BottomTabNavigator /> : <OnboardingScreen />}
       </NavigationContainer>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setAiVisible(true)}>
-        <Ionicons name="sparkles" size={24} color="#fff" />
-      </TouchableOpacity>
+      {state.hasCompletedOnboarding && (
+        <TouchableOpacity style={styles.fab} onPress={() => setAiVisible(true)}>
+          <Ionicons name="sparkles" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       <AIScreen visible={aiVisible} onClose={() => setAiVisible(false)} />
     </View>

@@ -12,8 +12,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH * 0.85;
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
@@ -128,8 +134,18 @@ function CardItem({
     new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n);
 
   return (
-    <View style={[styles.cardItem, { backgroundColor: card.color }]}>
-      <View style={styles.cardHeader}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => onEdit(card)}
+      onLongPress={() => onDelete(card.id)}
+    >
+      <LinearGradient
+        colors={[card.color, card.color + 'aa', card.color + '66']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardItem}
+      >
+        <View style={styles.cardHeader}>
         <Text style={styles.cardName}>{card.name}</Text>
         <View style={styles.cardActions}>
           <TouchableOpacity onPress={() => onToggleReminder(card)} style={styles.actionBtn}>
@@ -169,31 +185,32 @@ function CardItem({
         <View style={styles.extraRow}>
           {card.annualFee ? (
             <View style={styles.extraItem}>
-              <Ionicons name="calendar-outline" size={12} color="rgba(255,255,255,0.7)" />
+              <Ionicons name="cash-outline" size={16} color="rgba(255,255,255,0.8)" />
               <Text style={styles.extraText}>{t('annualFee')}: {fmt(card.annualFee)}</Text>
             </View>
           ) : null}
           {card.anniversaryDate ? (
             <View style={styles.extraItem}>
-              <Ionicons name="star-outline" size={12} color="rgba(255,255,255,0.7)" />
+              <Ionicons name="star-outline" size={16} color="rgba(255,255,255,0.8)" />
               <Text style={styles.extraText}>{t('anniversary')}: {formatAnniversary(card.anniversaryDate)}</Text>
             </View>
           ) : null}
           {card.benefits ? (
             <View style={styles.extraItem}>
-              <Ionicons name="gift-outline" size={12} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.extraText} numberOfLines={2}>{card.benefits}</Text>
+              <Ionicons name="gift-outline" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.extraText} numberOfLines={3}>{card.benefits}</Text>
             </View>
           ) : null}
         </View>
-      ) : null}
+      ) : <View style={{ flex: 1 }} />}
 
       {card.bankDomain ? (
         <View style={styles.cardLogoCorner}>
-          <BankBadge domain={card.bankDomain} size={42} />
+          <BankBadge domain={card.bankDomain} size={64} />
         </View>
       ) : null}
-    </View>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 }
 
@@ -325,8 +342,15 @@ export default function CardsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={theme.gradients.background}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.headerRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <PockytLogo variant="card" width={48} />
           <Text style={styles.header}>{t('myCards')}</Text>
@@ -336,35 +360,41 @@ export default function CardsScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={cards}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <CardItem
-            card={item}
-            spent={cardSpending[item.id] || 0}
-            currency={currency}
-            locale={locale}
-            theme={theme}
-            styles={styles}
-            onDelete={handleDelete}
-            onEdit={openEditModal}
-            onToggleReminder={handleToggleReminder}
-          />
-        )}
-        contentContainerStyle={cards.length === 0 ? styles.emptyContainer : { padding: 16, gap: 16 }}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <PockytLogo variant="mascot" width={110} />
-            <Text style={styles.emptyText}>{t('noCardsYet')}</Text>
-            <Text style={styles.emptyHint}>{t('addCardsHint')}</Text>
-          </View>
-        }
-      />
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        <FlatList
+          data={cards}
+          keyExtractor={item => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={CARD_WIDTH + 16}
+          decelerationRate="fast"
+          contentContainerStyle={cards.length === 0 ? styles.emptyContainer : { paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2, gap: 16 }}
+          renderItem={({ item }) => (
+            <CardItem
+              card={item}
+              spent={cardSpending[item.id] || 0}
+              currency={currency}
+              locale={locale}
+              theme={theme}
+              styles={styles}
+              onDelete={handleDelete}
+              onEdit={openEditModal}
+              onToggleReminder={handleToggleReminder}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <PockytLogo variant="card" width={110} />
+              <Text style={styles.emptyText}>{t('noCardsYet')}</Text>
+              <Text style={styles.emptyHint}>{t('addCardsHint')}</Text>
+            </View>
+          }
+        />
+      </View>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{editingCard ? t('editCard') : t('addCard')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -532,25 +562,28 @@ export default function CardsScreen() {
                 <Text style={styles.saveBtnText}>{editingCard ? t('saveChanges') : t('addCard')}</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
+          </BlurView>
         </KeyboardAvoidingView>
       </Modal>
 
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
+    container: { flex: 1, backgroundColor: '#000' }, // fallback
+    safeArea: { flex: 1 },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 16,
-      paddingTop: 20,
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 16,
     },
-    header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
+    header: { fontSize: 28, fontWeight: '400', color: theme.colors.text },
     addBtn: {
       backgroundColor: theme.colors.primary,
       width: 44,
@@ -560,76 +593,83 @@ function createStyles(theme: AppTheme) {
       justifyContent: 'center',
     },
     cardItem: {
-      borderRadius: theme.radius.lg,
-      padding: 20,
+      width: CARD_WIDTH,
+      height: CARD_WIDTH * 1.45,
+      borderRadius: 40,
+      padding: 28,
+      justifyContent: 'space-between',
       ...theme.shadow.card,
+      shadowRadius: 24,
+      elevation: 12,
       overflow: 'hidden',
     },
     cardLogoCorner: {
       position: 'absolute',
-      bottom: 16,
-      right: 16,
-      opacity: 0.92,
+      bottom: 20,
+      right: 20,
+      opacity: 0.2,
     },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    cardName: { fontSize: 18, fontWeight: '700', color: '#fff', flex: 1 },
-    cardActions: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-    actionBtn: { padding: 8 },
-    cardNumber: { fontSize: 16, color: 'rgba(255,255,255,0.8)', letterSpacing: 2, marginBottom: 16 },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-    cardDueLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
-    cardDueText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+    cardName: { fontSize: 28, fontWeight: '400', color: '#fff', flex: 1, letterSpacing: 0 },
+    cardActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    actionBtn: { padding: 8, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 20 },
+    cardNumber: { fontSize: 24, color: 'rgba(255,255,255,0.9)', letterSpacing: 2, fontWeight: '400', marginVertical: 20 },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' },
+    cardDueLabel: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 4, fontWeight: '600', textTransform: 'uppercase' },
+    cardDueText: { fontSize: 18, color: '#fff', fontWeight: '500' },
     extraRow: {
-      marginTop: 10,
-      paddingTop: 10,
+      marginTop: 24,
+      paddingTop: 20,
       borderTopWidth: 1,
       borderTopColor: 'rgba(255,255,255,0.2)',
-      gap: 4,
+      gap: 12,
     },
-    extraItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    extraText: { fontSize: 11, color: 'rgba(255,255,255,0.8)', flex: 1 },
-    emptyContainer: { flex: 1, justifyContent: 'center' },
-    empty: { alignItems: 'center', paddingTop: 80 },
-    emptyText: { fontSize: 18, fontWeight: '600', color: theme.colors.textMuted, marginTop: 16 },
-    emptyHint: { fontSize: 13, color: theme.colors.textFaint, marginTop: 6, textAlign: 'center', paddingHorizontal: 32 },
-    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+    extraItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    extraText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', flex: 1, fontWeight: '600' },
+    emptyContainer: { flex: 1, justifyContent: 'center', width: SCREEN_WIDTH },
+    empty: { alignItems: 'center', paddingHorizontal: 32 },
+    emptyText: { fontSize: 20, fontWeight: '500', color: theme.colors.textMuted, marginTop: 16 },
+    emptyHint: { fontSize: 14, color: theme.colors.textFaint, marginTop: 8, textAlign: 'center' },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingBottom: 24 },
     modalSheet: {
-      backgroundColor: theme.colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      backgroundColor: theme.glass.background,
+      borderColor: theme.glass.border,
+      borderWidth: 1,
+      borderRadius: 32,
       padding: 24,
       paddingBottom: 40,
       maxHeight: '92%',
+      overflow: 'hidden',
     },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text },
+    modalTitle: { fontSize: 20, fontWeight: '500', color: theme.colors.text },
     input: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      padding: 14,
-      fontSize: 15,
-      marginBottom: 12,
-      backgroundColor: theme.colors.surfaceMuted,
+      borderColor: theme.glass.border,
+      borderRadius: 16,
+      padding: 16,
+      fontSize: 16,
+      marginBottom: 16,
+      backgroundColor: 'rgba(0,0,0,0.08)',
       color: theme.colors.text,
     },
-    inputMulti: { height: 72, textAlignVertical: 'top' },
-    inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, marginBottom: 6 },
+    inputMulti: { height: 100, textAlignVertical: 'top' },
+    inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, marginBottom: 8 },
     toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
     pickerSingle: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      backgroundColor: theme.colors.surfaceMuted,
+      borderColor: theme.glass.border,
+      borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.08)',
       marginBottom: 12,
       overflow: 'hidden',
     },
     pickerRow: {
       flexDirection: 'row',
       borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      backgroundColor: theme.colors.surfaceMuted,
+      borderColor: theme.glass.border,
+      borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.08)',
       marginBottom: 12,
       overflow: 'hidden',
     },
@@ -647,34 +687,36 @@ function createStyles(theme: AppTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: 10,
-      padding: 10,
+      backgroundColor: 'rgba(0,0,0,0.08)',
+      borderRadius: 12,
+      padding: 12,
       marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.glass.border,
     },
-    bankPreviewText: { flex: 1, fontSize: 13, color: theme.colors.textMuted },
+    bankPreviewText: { flex: 1, fontSize: 14, color: theme.colors.textMuted },
     bankPickerBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
       padding: 10,
-      marginBottom: 4,
+      marginBottom: 8,
     },
-    bankPickerBtnText: { fontSize: 14, fontWeight: '500', flex: 1 },
+    bankPickerBtnText: { fontSize: 14, fontWeight: '600', flex: 1 },
     bankListContainer: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      backgroundColor: theme.colors.surface,
-      marginBottom: 12,
+      borderColor: theme.glass.border,
+      borderRadius: 16,
+      backgroundColor: theme.glass.background,
+      marginBottom: 16,
       overflow: 'hidden',
     },
     bankSearchInput: {
       borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      padding: 12,
+      borderBottomColor: theme.glass.border,
+      padding: 14,
       fontSize: 15,
-      backgroundColor: theme.colors.surfaceMuted,
+      backgroundColor: 'rgba(0,0,0,0.08)',
       color: theme.colors.text,
     },
     bankRow: {

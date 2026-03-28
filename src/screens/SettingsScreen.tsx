@@ -16,6 +16,7 @@ import {
   Share,
   Switch,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import * as Print from 'expo-print';
 import * as MailComposer from 'expo-mail-composer';
@@ -278,7 +279,7 @@ export default function SettingsScreen() {
         attachments: [uri],
       });
     } catch (e: any) {
-      Alert.alert('Export Failed', e?.message ?? 'Could not generate PDF.');
+      Alert.alert(t('exportFailed'), e?.message ?? '');
     } finally {
       setEmailSending(false);
     }
@@ -292,7 +293,7 @@ export default function SettingsScreen() {
         title: t('backupTitle'),
       });
     } catch (e: any) {
-      Alert.alert('Backup Failed', e?.message || '');
+      Alert.alert(t('backupFailed'), e?.message || '');
     }
   }
 
@@ -373,7 +374,7 @@ export default function SettingsScreen() {
       }
     });
     if (hasError) {
-      Alert.alert('Invalid budget', 'Please enter valid positive numbers for budgets.');
+      Alert.alert(t('invalidBudget'), t('invalidBudgetMsg'));
       return;
     }
     handleSaveBudgets();
@@ -381,8 +382,8 @@ export default function SettingsScreen() {
 
   function handleAddMerchantRule() {
     const kw = newKeyword.trim();
-    if (!kw) { Alert.alert('Enter a keyword'); return; }
-    if (!newRuleCategory) { Alert.alert('Select a category'); return; }
+    if (!kw) { Alert.alert(t('enterKeyword')); return; }
+    if (!newRuleCategory) { Alert.alert(t('selectCategoryShort')); return; }
     const rule: MerchantRule = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       keyword: kw,
@@ -394,7 +395,7 @@ export default function SettingsScreen() {
   }
 
   function handleDeleteMerchantRule(id: string) {
-    Alert.alert('Delete rule', 'Remove this auto-categorization rule?', [
+    Alert.alert(t('deleteRule'), t('removeRulePrompt'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_MERCHANT_RULE', payload: id }) },
     ]);
@@ -403,10 +404,10 @@ export default function SettingsScreen() {
   function handleAddSubscription() {
     const name = subName.trim();
     const amount = parseFloat(subAmount);
-    if (!name) { Alert.alert('Enter a name'); return; }
-    if (isNaN(amount) || amount <= 0) { Alert.alert('Enter a valid amount'); return; }
-    if (!subCategory) { Alert.alert('Select a category'); return; }
-    if (!subDue || !/^\d{4}-\d{2}-\d{2}$/.test(subDue)) { Alert.alert('Enter next due date as YYYY-MM-DD'); return; }
+    if (!name) { Alert.alert(t('enterName')); return; }
+    if (isNaN(amount) || amount <= 0) { Alert.alert(t('enterValidAmountShort')); return; }
+    if (!subCategory) { Alert.alert(t('selectCategoryShort')); return; }
+    if (!subDue || !/^\d{4}-\d{2}-\d{2}$/.test(subDue)) { Alert.alert(t('enterDueDate')); return; }
     const sub: Subscription = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       name,
@@ -421,7 +422,7 @@ export default function SettingsScreen() {
   }
 
   function handleDeleteSubscription(id: string) {
-    Alert.alert('Delete subscription', 'Remove this subscription?', [
+    Alert.alert(t('deleteSubscription'), t('removeSubscriptionPrompt'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('delete'), style: 'destructive', onPress: () => dispatch({ type: 'DELETE_SUBSCRIPTION', payload: id }) },
     ]);
@@ -429,7 +430,7 @@ export default function SettingsScreen() {
 
   function handleImportCSV() {
     const text = csvInput.trim();
-    if (!text) { Alert.alert('Paste CSV data first'); return; }
+    if (!text) { Alert.alert(t('pasteCsvHere')); return; }
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
     // Skip header row if it looks like one
     const start = lines[0].toLowerCase().includes('date') ? 1 : 0;
@@ -463,9 +464,9 @@ export default function SettingsScreen() {
     setCsvInput('');
     setCsvModalVisible(false);
     const msg = errors.length > 0
-      ? `Imported ${imported} transactions.\n\nSkipped ${errors.length} rows:\n${errors.slice(0, 5).join('\n')}`
-      : `Successfully imported ${imported} transactions.`;
-    Alert.alert('Import complete', msg);
+      ? t('importedNWithErrors')(imported, errors.length, errors.slice(0, 5).join('\n'))
+      : t('importedN')(imported);
+    Alert.alert(t('importCompleteTitle'), msg);
   }
 
   function handleSaveApiKey() {
@@ -478,12 +479,21 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-    <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.settingsHeaderRow}>
-        <PockytLogo variant="mascot" width={48} />
-        <Text style={styles.header}>{t('settingsHeader')}</Text>
-      </View>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={theme.gradients.background}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.headerRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <PockytLogo variant="mascot" width={48} />
+            <Text style={styles.header}>{t('settingsHeader')}</Text>
+          </View>
+        </View>
+        <ScrollView contentContainerStyle={styles.content}>
 
       {/* Appearance */}
       <Text style={styles.sectionTitle}>{t('appearance')}</Text>
@@ -611,23 +621,23 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Merchant Auto-Categorization</Text>
+      <Text style={styles.sectionTitle}>{t('merchantAutoCateg')}</Text>
       <View style={styles.section}>
         <SettingRow
           icon="flash-outline"
-          label="Auto-Categorization Rules"
-          value={state.merchantRules?.length > 0 ? `${state.merchantRules.length} rule${state.merchantRules.length !== 1 ? 's' : ''}` : undefined}
+          label={t('merchantRules')}
+          value={state.merchantRules?.length > 0 ? t('nRules')(state.merchantRules.length) : undefined}
           onPress={() => setMerchantModalVisible(true)}
           theme={theme}
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Subscriptions</Text>
+      <Text style={styles.sectionTitle}>{t('subscriptions')}</Text>
       <View style={styles.section}>
         <SettingRow
           icon="refresh-outline"
-          label="Manage Subscriptions"
-          value={state.subscriptions?.length > 0 ? `${state.subscriptions.length} active` : undefined}
+          label={t('manageSubscriptions')}
+          value={state.subscriptions?.length > 0 ? t('nActive')(state.subscriptions.length) : undefined}
           onPress={() => setSubModalVisible(true)}
           theme={theme}
         />
@@ -636,7 +646,7 @@ export default function SettingsScreen() {
       <Text style={styles.sectionTitle}>{t('dataLabel')}</Text>
       <View style={styles.section}>
         <SettingRow icon="document-text-outline" label={t('exportPDF')} onPress={handleExportPDF} theme={theme} />
-        <SettingRow icon="cloud-upload-outline" label="Import CSV" onPress={() => setCsvModalVisible(true)} theme={theme} />
+        <SettingRow icon="cloud-upload-outline" label={t('importCsv')} onPress={() => setCsvModalVisible(true)} theme={theme} />
         <SettingRow icon="download-outline" label={t('backupData')} onPress={handleBackup} theme={theme} />
         <SettingRow icon="push-outline" label={t('restoreData')} onPress={handleRestore} theme={theme} />
         <SettingRow icon="trash-outline" label={t('clearAllData')} onPress={handleClearData} danger theme={theme} />
@@ -758,7 +768,7 @@ export default function SettingsScreen() {
             </View>
             <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.text, marginBottom: 6 }}>{t('exportPDF')}</Text>
             <Text style={{ fontSize: 13, color: theme.colors.textMuted, textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
-              {language === 'zh' ? '\u5c06\u751f\u6210 PDF \u62a5\u544a\u5e76\u901a\u8fc7\u90ae\u4ef6\u53d1\u9001' : 'A PDF report will be generated and sent to your email'}
+              {t('pdfWillBeSent')}
             </Text>
             <TextInput
               style={styles.emailInput}
@@ -772,7 +782,7 @@ export default function SettingsScreen() {
               returnKeyType="next"
               autoFocus
             />
-            <Text style={{ fontSize: 12, color: theme.colors.textMuted, alignSelf: 'flex-start', marginBottom: 6 }}>Date range (optional)</Text>
+            <Text style={{ fontSize: 12, color: theme.colors.textMuted, alignSelf: 'flex-start', marginBottom: 6 }}>{t('dateRangeOptional')}</Text>
             <View style={{ flexDirection: 'row', gap: 8, width: '100%', marginBottom: 20 }}>
               <TextInput
                 style={[styles.emailInput, { flex: 1, marginBottom: 0, paddingVertical: 10, fontSize: 13 }]}
@@ -918,18 +928,18 @@ export default function SettingsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Auto-Categorization Rules</Text>
+              <Text style={styles.modalTitle}>{t('merchantRules')}</Text>
               <TouchableOpacity onPress={() => setMerchantModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
             <Text style={{ fontSize: 12, color: theme.colors.textFaint, marginBottom: 12 }}>
-              When a transaction note contains a keyword, it automatically gets that category.
+              {t('ruleDescription')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <TextInput
                 style={[styles.catInput, { flex: 1 }]}
-                placeholder="Keyword (e.g. Starbucks)"
+                placeholder={t('keywordPlaceholder')}
                 placeholderTextColor={theme.colors.textFaint}
                 value={newKeyword}
                 onChangeText={setNewKeyword}
@@ -943,11 +953,11 @@ export default function SettingsScreen() {
               ))}
             </ScrollView>
             <TouchableOpacity style={[styles.primaryBtn, { marginTop: 0, marginBottom: 16 }]} onPress={handleAddMerchantRule}>
-              <Text style={styles.primaryBtnText}>Add Rule</Text>
+              <Text style={styles.primaryBtnText}>{t('addRule')}</Text>
             </TouchableOpacity>
             <ScrollView style={{ maxHeight: 240 }}>
               {(state.merchantRules || []).length === 0 ? (
-                <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 16 }}>No rules yet</Text>
+                <Text style={{ color: theme.colors.textFaint, textAlign: 'center', padding: 16 }}>{t('noRulesYet')}</Text>
               ) : (state.merchantRules || []).map(rule => (
                 <View key={rule.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
                   <Ionicons name="flash-outline" size={16} color={theme.colors.primary} style={{ marginRight: 8 }} />
@@ -970,19 +980,19 @@ export default function SettingsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Subscriptions</Text>
+              <Text style={styles.modalTitle}>{t('subscriptions')}</Text>
               <TouchableOpacity onPress={() => setSubModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={[styles.primaryBtn, { marginTop: 0, marginBottom: 16 }]} onPress={() => setAddSubVisible(true)}>
-              <Text style={styles.primaryBtnText}>+ Add Subscription</Text>
+              <Text style={styles.primaryBtnText}>+ {t('addSubscription')}</Text>
             </TouchableOpacity>
             <ScrollView style={{ maxHeight: 320 }}>
               {(state.subscriptions || []).length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                   <Ionicons name="refresh-outline" size={40} color={theme.colors.textFaint} />
-                  <Text style={{ fontSize: 14, color: theme.colors.textFaint, marginTop: 12 }}>No subscriptions yet</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.textFaint, marginTop: 12 }}>{t('noSubscriptionsYet')}</Text>
                 </View>
               ) : (state.subscriptions || []).map(sub => {
                 const fmtSub = (n: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n);
@@ -996,7 +1006,7 @@ export default function SettingsScreen() {
                         {fmtSub(sub.amount)} / {sub.billingCycle} · {sub.category}
                       </Text>
                       <Text style={{ fontSize: 12, color: urgent ? theme.colors.danger : theme.colors.textFaint, marginTop: 1 }}>
-                        Due: {sub.nextDueDate}{urgent ? ` (${daysUntil <= 0 ? 'overdue' : `${daysUntil}d left`})` : ''}
+                        {sub.nextDueDate}{urgent ? ` (${daysUntil <= 0 ? t('overdue') : t('daysLeftSub')(daysUntil)})` : ''}
                       </Text>
                     </View>
                     <TouchableOpacity onPress={() => handleDeleteSubscription(sub.id)} style={{ padding: 8 }}>
@@ -1015,19 +1025,19 @@ export default function SettingsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Subscription</Text>
+              <Text style={styles.modalTitle}>{t('addSubscription')}</Text>
               <TouchableOpacity onPress={() => setAddSubVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
-              <TextInput style={styles.catInput} placeholder="Name (e.g. Netflix)" placeholderTextColor={theme.colors.textFaint} value={subName} onChangeText={setSubName} />
+              <TextInput style={styles.catInput} placeholder={t('subNamePlaceholder')} placeholderTextColor={theme.colors.textFaint} value={subName} onChangeText={setSubName} />
               <View style={{ height: 10 }} />
-              <TextInput style={styles.catInput} placeholder="Amount" placeholderTextColor={theme.colors.textFaint} keyboardType="decimal-pad" value={subAmount} onChangeText={setSubAmount} />
+              <TextInput style={styles.catInput} placeholder={t('amount')} placeholderTextColor={theme.colors.textFaint} keyboardType="decimal-pad" value={subAmount} onChangeText={setSubAmount} />
               <View style={{ height: 10 }} />
-              <TextInput style={styles.catInput} placeholder="Next due date (YYYY-MM-DD)" placeholderTextColor={theme.colors.textFaint} value={subDue} onChangeText={setSubDue} maxLength={10} />
+              <TextInput style={styles.catInput} placeholder={t('nextDueDatePlaceholder')} placeholderTextColor={theme.colors.textFaint} value={subDue} onChangeText={setSubDue} maxLength={10} />
               <View style={{ height: 10 }} />
-              <Text style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 8 }}>Billing cycle</Text>
+              <Text style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 8 }}>{t('billingCycle')}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
                 {(['monthly', 'yearly'] as const).map(c => (
                   <TouchableOpacity key={c} style={[styles.chip, subCycle === c && styles.chipActive]} onPress={() => setSubCycle(c)}>
@@ -1035,7 +1045,7 @@ export default function SettingsScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 8 }}>Category</Text>
+              <Text style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 8 }}>{t('category')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
                 {categories.map(cat => (
                   <TouchableOpacity key={cat} style={[styles.chip, subCategory === cat && styles.chipActive]} onPress={() => setSubCategory(cat)}>
@@ -1044,7 +1054,7 @@ export default function SettingsScreen() {
                 ))}
               </ScrollView>
               <TouchableOpacity style={styles.primaryBtn} onPress={handleAddSubscription}>
-                <Text style={styles.primaryBtnText}>Save Subscription</Text>
+                <Text style={styles.primaryBtnText}>{t('saveSubscription')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -1056,13 +1066,13 @@ export default function SettingsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Import CSV</Text>
+              <Text style={styles.modalTitle}>{t('importCsv')}</Text>
               <TouchableOpacity onPress={() => setCsvModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
             <Text style={{ fontSize: 12, color: theme.colors.textFaint, marginBottom: 8 }}>
-              Paste CSV data with columns:{'\n'}Date, Type (expense/income), Category, Amount, Note
+              {t('csvDescription')}{'\n'}{t('csvColumns')}
             </Text>
             <Text style={{ fontSize: 11, color: theme.colors.textFaint, marginBottom: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
               2026-03-01,expense,Food & Dining,12.50,"Coffee"
@@ -1070,30 +1080,38 @@ export default function SettingsScreen() {
             <TextInput
               style={[styles.catInput, { height: 160, textAlignVertical: 'top', marginBottom: 16 }]}
               multiline
-              placeholder="Paste CSV rows here..."
+              placeholder={t('pasteCsvHere')}
               placeholderTextColor={theme.colors.textFaint}
               value={csvInput}
               onChangeText={setCsvInput}
               autoFocus
             />
             <TouchableOpacity style={styles.primaryBtn} onPress={handleImportCSV}>
-              <Text style={styles.primaryBtnText}>Import Transactions</Text>
+              <Text style={styles.primaryBtnText}>{t('importTransactions')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-    </ScrollView>
-    </SafeAreaView>
+      </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 16, paddingBottom: 40 },
-    settingsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-    header: { fontSize: 28, fontWeight: '800', color: theme.colors.text },
+    safeArea: { flex: 1 },
+    content: { padding: 16, paddingBottom: 120 },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 4,
+      paddingBottom: 16,
+    },
+    header: { fontSize: 28, fontWeight: '400', color: theme.colors.text },
     sectionTitle: { fontSize: 12, fontWeight: '700', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 16, paddingLeft: 4 },
     section: {
       backgroundColor: theme.colors.surface,
@@ -1163,7 +1181,7 @@ function createStyles(theme: AppTheme) {
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     modalTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.text },
     aboutIcon: { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-    aboutTitle: { fontSize: 24, fontWeight: '800', marginBottom: 4 },
+    aboutTitle: { fontSize: 24, fontWeight: '500', marginBottom: 4 },
     privacySection: { fontSize: 14, fontWeight: '700', color: theme.colors.text, marginTop: 16, marginBottom: 6 },
     privacyText: { fontSize: 13, color: theme.colors.textMuted, lineHeight: 20 },
     catInput: {

@@ -110,6 +110,7 @@ export interface AppState {
   billSplits: BillSplit[];
   subscriptions: Subscription[];
   chatHistory: PersistedChatMessage[];
+  hasCompletedOnboarding?: boolean;
 }
 
 export type AppAction =
@@ -150,4 +151,6 @@ export type AppAction =
   | { type: 'DELETE_SUBSCRIPTION'; payload: string }
   // Chat history
   | { type: 'SET_CHAT_HISTORY'; payload: PersistedChatMessage[] }
-  | { type: 'CLEAR_CHAT_HISTORY' };
+  | { type: 'CLEAR_CHAT_HISTORY' }
+  // Onboarding
+  | { type: 'COMPLETE_ONBOARDING' };

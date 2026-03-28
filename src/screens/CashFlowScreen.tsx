@@ -8,9 +8,12 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { AppTheme } from '../constants/theme';
 import {
   format,
@@ -43,6 +46,7 @@ function monthData(transactions: any[], offset: number) {
 export default function CashFlowScreen({ visible, onClose }: Props) {
   const { state } = useApp();
   const theme = useTheme();
+  const t = useTranslation();
   const { transactions, currency, language, recurringTransactions, subscriptions } = state;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const locale = language === 'zh' ? 'zh-CN' : 'en-US';
@@ -54,36 +58,21 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
   }, [transactions]);
 
   // Forecast: average income and expense from last 3 months
+  // Recurring transactions are already reflected in historical data via processRecurring,
+  // so we only use the historical averages to avoid double-counting.
   const forecast = useMemo(() => {
     const last3 = history.slice(3);
     const avgIncome = last3.reduce((s, m) => s + m.income, 0) / 3;
     const avgExpense = last3.reduce((s, m) => s + m.expense, 0) / 3;
 
-    // Add recurring transaction contributions
-    const monthlyRecurring = (recurringTransactions || []).reduce((s, r) => {
-      if (r.frequency === 'monthly') return s + (r.type === 'expense' ? r.amount : -r.amount);
-      if (r.frequency === 'weekly') return s + (r.type === 'expense' ? r.amount * 4.33 : -r.amount * 4.33);
-      if (r.frequency === 'daily') return s + (r.type === 'expense' ? r.amount * 30 : -r.amount * 30);
-      return s;
-    }, 0);
-
-    // Add subscriptions
-    const monthlySubscriptions = (subscriptions || []).reduce((s, sub) => {
-      if (sub.billingCycle === 'monthly') return s + sub.amount;
-      if (sub.billingCycle === 'yearly') return s + sub.amount / 12;
-      return s;
-    }, 0);
-
-    const forecastExpense = Math.max(0, avgExpense + monthlyRecurring + monthlySubscriptions);
-    const forecastIncome = avgIncome;
     return Array.from({ length: 3 }, (_, i) => ({
       month: addMonths(new Date(), i + 1),
-      income: forecastIncome,
-      expense: forecastExpense,
-      net: forecastIncome - forecastExpense,
+      income: avgIncome,
+      expense: avgExpense,
+      net: avgIncome - avgExpense,
       isForecast: true,
     }));
-  }, [history, recurringTransactions, subscriptions]);
+  }, [history]);
 
   const allMonths = [...history, ...forecast];
   const maxVal = Math.max(...allMonths.map(m => Math.max(m.income, m.expense)), 1);
@@ -93,19 +82,26 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={theme.gradients.background}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Ionicons name="close" size={22} color={theme.colors.textMuted} />
           </TouchableOpacity>
-          <Text style={styles.title}>Cash Flow Forecast</Text>
+          <Text style={styles.title}>{t('cashFlowForecast')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {/* Current balance summary */}
           <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>6-Month Net Balance</Text>
+            <Text style={styles.balanceLabel}>{t('sixMonthNet')}</Text>
             <Text style={[styles.balanceValue, { color: currentNet >= 0 ? theme.colors.success : theme.colors.danger }]}>
               {currentNet >= 0 ? '+' : ''}{fmt(currentNet)}
             </Text>
@@ -116,15 +112,15 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
             <View style={styles.chartHeader}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
-                <Text style={styles.legendText}>Income</Text>
+                <Text style={styles.legendText}>{t('incomeLabel')}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: theme.colors.danger }]} />
-                <Text style={styles.legendText}>Expense</Text>
+                <Text style={styles.legendText}>{t('expenseLabel')}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: theme.colors.primary, opacity: 0.4 }]} />
-                <Text style={[styles.legendText, { opacity: 0.7 }]}>Forecast</Text>
+                <Text style={[styles.legendText, { opacity: 0.7 }]}>{t('forecastLabel')}</Text>
               </View>
             </View>
 
@@ -143,7 +139,7 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
                       <Text style={[styles.barLabel, isForecast && { color: theme.colors.primary }]}>
                         {format(m.month, 'MMM')}
                       </Text>
-                      {isForecast && <Text style={styles.forecastTag}>est</Text>}
+                      {isForecast && <Text style={styles.forecastTag}>{t('estTag')}</Text>}
                     </View>
                   );
                 })}
@@ -152,14 +148,14 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
           </View>
 
           {/* Monthly breakdown */}
-          <Text style={styles.sectionTitle}>Monthly Breakdown</Text>
+          <Text style={styles.sectionTitle}>{t('monthlyBreakdown')}</Text>
           {allMonths.map((m, i) => {
             const isForecast = (m as any).isForecast;
             return (
               <View key={i} style={[styles.monthRow, isForecast && styles.monthRowForecast]}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.monthName}>
-                    {format(m.month, 'MMMM yyyy')}{isForecast ? ' (est.)' : ''}
+                    {format(m.month, 'MMMM yyyy')}{isForecast ? t('estSuffix') : ''}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
                     <Text style={[styles.monthFigure, { color: theme.colors.success }]}>+{fmt(m.income)}</Text>
@@ -176,7 +172,7 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
           {/* Upcoming known expenses */}
           {((recurringTransactions || []).length > 0 || (subscriptions || []).length > 0) && (
             <>
-              <Text style={styles.sectionTitle}>Known Upcoming Expenses</Text>
+              <Text style={styles.sectionTitle}>{t('knownUpcoming')}</Text>
               {(recurringTransactions || [])
                 .filter(r => r.type === 'expense')
                 .map(r => (
@@ -202,46 +198,53 @@ export default function CashFlowScreen({ visible, onClose }: Props) {
             </>
           )}
         </ScrollView>
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
+    container: { flex: 1, backgroundColor: '#000' }, // fallback
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      padding: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+      padding: 16, borderBottomWidth: 1, borderBottomColor: theme.glass.border,
     },
-    closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
+    closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.glass.border },
     title: { fontSize: 18, fontWeight: '700', color: theme.colors.text },
     balanceCard: {
-      backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20,
+      backgroundColor: theme.glass.background, borderRadius: 24, padding: 24,
       alignItems: 'center', marginBottom: 20, ...theme.shadow.card,
+      borderWidth: 1, borderColor: theme.glass.border,
     },
-    balanceLabel: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 6 },
-    balanceValue: { fontSize: 32, fontWeight: '800' },
-    chartSection: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, marginBottom: 20, ...theme.shadow.card },
-    chartHeader: { flexDirection: 'row', gap: 16, marginBottom: 12 },
+    balanceLabel: { fontSize: 14, color: theme.colors.textMuted, marginBottom: 8 },
+    balanceValue: { fontSize: 36, fontWeight: '300' },
+    chartSection: { 
+      backgroundColor: theme.glass.background, borderRadius: 24, padding: 20, marginBottom: 20, ...theme.shadow.card,
+      borderWidth: 1, borderColor: theme.glass.border,
+    },
+    chartHeader: { flexDirection: 'row', gap: 16, marginBottom: 16 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     legendDot: { width: 10, height: 10, borderRadius: 5 },
     legendText: { fontSize: 12, color: theme.colors.textMuted },
     bar: { width: 20, borderRadius: 4 },
     barLabel: { fontSize: 10, color: theme.colors.textFaint, fontWeight: '600' },
     forecastTag: { fontSize: 9, color: theme.colors.primary, fontWeight: '700' },
-    sectionTitle: { fontSize: 12, fontWeight: '700', color: theme.colors.textFaint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, marginTop: 4 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, marginTop: 8 },
     monthRow: {
-      flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface,
-      borderRadius: 12, padding: 14, marginBottom: 8, ...theme.shadow.card,
+      flexDirection: 'row', alignItems: 'center', backgroundColor: theme.glass.background,
+      borderRadius: 16, padding: 16, marginBottom: 10, ...theme.shadow.card,
+      borderWidth: 1, borderColor: theme.glass.border,
     },
     monthRowForecast: { opacity: 0.7, borderWidth: 1, borderColor: theme.colors.primary + '44', borderStyle: 'dashed' },
     monthName: { fontSize: 14, fontWeight: '600', color: theme.colors.text },
-    monthFigure: { fontSize: 12, fontWeight: '600' },
-    monthNet: { fontSize: 16, fontWeight: '800' },
+    monthFigure: { fontSize: 13, fontWeight: '600' },
+    monthNet: { fontSize: 18, fontWeight: '500' },
     upcomingRow: {
-      flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface,
-      borderRadius: 12, padding: 14, marginBottom: 8, ...theme.shadow.card,
+      flexDirection: 'row', alignItems: 'center', backgroundColor: theme.glass.background,
+      borderRadius: 16, padding: 16, marginBottom: 10, ...theme.shadow.card,
+      borderWidth: 1, borderColor: theme.glass.border,
     },
     upcomingName: { fontSize: 14, fontWeight: '600', color: theme.colors.text },
     upcomingDetail: { fontSize: 12, color: theme.colors.textMuted },

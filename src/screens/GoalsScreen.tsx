@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -24,14 +26,21 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-const GOAL_COLORS = ['#6C5CE7', '#00B894', '#E17055', '#0984E3', '#FDCB6E', '#E84393'];
+const GOAL_COLORS = ['#2C3E50', '#7F8C8D', '#95A5A6', '#34495E', '#E67E22', '#5C6AC4'];
 const GOAL_ICONS = ['trophy', 'airplane', 'home', 'phone-portrait', 'car', 'school', 'medkit', 'gift', 'diamond', 'heart'];
 
 function ProgressBar({ pct, color, theme }: { pct: number; color: string; theme: AppTheme }) {
   const clamped = Math.min(100, Math.max(0, pct));
   return (
-    <View style={{ height: 8, backgroundColor: theme.colors.surfaceMuted, borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
-      <View style={{ height: 8, borderRadius: 4, width: `${clamped}%` as any, backgroundColor: color }} />
+    <View style={{ height: 10, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 5, overflow: 'hidden', marginBottom: 8, borderWidth: 1, borderColor: theme.glass.border }}>
+      <View style={{ width: `${clamped}%` as any, height: 10 }}>
+        <LinearGradient
+          colors={[color, color + 'cc']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ flex: 1, borderRadius: 5 }}
+        />
+      </View>
     </View>
   );
 }
@@ -244,7 +253,7 @@ export default function GoalsScreen({ visible, onClose }: Props) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={styles.sheet}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{t('goals')}</Text>
@@ -302,13 +311,13 @@ export default function GoalsScreen({ visible, onClose }: Props) {
             <Ionicons name="add" size={20} color="#fff" />
             <Text style={styles.addBtnText}>{t('newGoal')}</Text>
           </TouchableOpacity>
-        </View>
+        </BlurView>
       </View>
 
       {/* Add/Edit form modal */}
       <Modal visible={formVisible} animationType="slide" transparent onRequestClose={resetForm}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
-          <View style={styles.formSheet}>
+          <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={styles.formSheet}>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>{editingGoal ? t('editGoal') : t('newGoal')}</Text>
               <TouchableOpacity onPress={resetForm}>
@@ -379,7 +388,7 @@ export default function GoalsScreen({ visible, onClose }: Props) {
                 <Text style={styles.saveBtnText}>{editingGoal ? t('updateGoal') : t('createGoal')}</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
+          </BlurView>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -387,7 +396,7 @@ export default function GoalsScreen({ visible, onClose }: Props) {
       {savingsGoal && (
         <Modal visible={!!savingsGoal} animationType="fade" transparent onRequestClose={() => setSavingsGoal(null)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.savingsOverlay}>
-            <View style={styles.savingsSheet}>
+            <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint={state.darkMode ? 'dark' : 'light'} style={styles.savingsSheet}>
               <Text style={styles.savingsTitle}>{t('addTo')(savingsGoal.title)}</Text>
               <TextInput
                 style={styles.input}
@@ -406,7 +415,7 @@ export default function GoalsScreen({ visible, onClose }: Props) {
                   <Text style={styles.savingsConfirmText}>{t('addSavings')}</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </BlurView>
           </KeyboardAvoidingView>
         </Modal>
       )}
@@ -416,21 +425,25 @@ export default function GoalsScreen({ visible, onClose }: Props) {
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingBottom: 24, justifyContent: 'flex-end' },
     sheet: {
-      backgroundColor: theme.colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      backgroundColor: theme.glass.background,
+      borderColor: theme.glass.border,
+      borderWidth: 1,
+      borderRadius: 32,
       maxHeight: '90%',
       paddingBottom: 24,
+      overflow: 'hidden',
     },
     formSheet: {
-      backgroundColor: theme.colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      backgroundColor: theme.glass.background,
+      borderColor: theme.glass.border,
+      borderWidth: 1,
+      borderRadius: 32,
       padding: 24,
       paddingBottom: 40,
       maxHeight: '90%',
+      overflow: 'hidden',
     },
     header: {
       flexDirection: 'row',
@@ -439,28 +452,32 @@ function createStyles(theme: AppTheme) {
       padding: 20,
       paddingBottom: 12,
     },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: theme.colors.text },
+    headerTitle: { fontSize: 22, fontWeight: '500', color: theme.colors.text },
     closeBtn: { padding: 4 },
     summaryRow: {
       flexDirection: 'row',
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.glass.background,
+      borderColor: theme.glass.border,
+      borderWidth: 1,
       marginHorizontal: 16,
       borderRadius: theme.radius.lg,
       padding: 16,
-      marginBottom: 4,
+      marginBottom: 8,
       ...theme.shadow.card,
     },
     summaryItem: { flex: 1, alignItems: 'center' },
-    summaryValue: { fontSize: 16, fontWeight: '800', color: theme.colors.text },
+    summaryValue: { fontSize: 16, fontWeight: '500', color: theme.colors.text },
     summaryLabel: { fontSize: 11, color: theme.colors.textFaint, marginTop: 2 },
-    summaryDivider: { width: 1, backgroundColor: theme.colors.border },
+    summaryDivider: { width: 1, backgroundColor: theme.glass.border },
     list: { flex: 1 },
     emptyContainer: { flex: 1, justifyContent: 'center' },
     empty: { alignItems: 'center', paddingVertical: 60 },
     emptyTitle: { fontSize: 17, fontWeight: '600', color: theme.colors.textMuted, marginTop: 14 },
     emptyHint: { fontSize: 13, color: theme.colors.textFaint, marginTop: 6, textAlign: 'center', paddingHorizontal: 40 },
     goalCard: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.glass.background,
+      borderColor: theme.glass.border,
+      borderWidth: 1,
       borderRadius: theme.radius.lg,
       flexDirection: 'row',
       overflow: 'hidden',
@@ -472,13 +489,13 @@ function createStyles(theme: AppTheme) {
     goalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
     goalIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     goalTitleWrap: { flex: 1 },
-    goalTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.text },
+    goalTitle: { fontSize: 15, fontWeight: '500', color: theme.colors.text },
     goalDeadline: { fontSize: 11, color: theme.colors.textFaint, marginTop: 1 },
     completedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     completedText: { fontSize: 12, fontWeight: '600' },
     iconBtn: { padding: 6 },
     goalAmounts: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    savedAmt: { fontSize: 14, fontWeight: '700', color: theme.colors.text },
+    savedAmt: { fontSize: 14, fontWeight: '500', color: theme.colors.text },
     pctText: { fontSize: 12, fontWeight: '600', color: theme.colors.textMuted },
     targetAmt: { fontSize: 13, color: theme.colors.textFaint },
     addSavingsBtn: {
@@ -502,15 +519,15 @@ function createStyles(theme: AppTheme) {
       borderRadius: 14,
       padding: 16,
     },
-    addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    addBtnText: { color: '#fff', fontSize: 16, fontWeight: '500' },
     input: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      padding: 14,
+      borderColor: theme.glass.border,
+      borderRadius: 16,
+      padding: 16,
       fontSize: 16,
-      marginBottom: 12,
-      backgroundColor: theme.colors.surfaceMuted,
+      marginBottom: 16,
+      backgroundColor: 'rgba(0,0,0,0.08)',
       color: theme.colors.text,
     },
     sectionLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, marginBottom: 10 },
@@ -520,11 +537,13 @@ function createStyles(theme: AppTheme) {
     iconChip: {
       width: 44,
       height: 44,
-      borderRadius: 12,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.colors.surfaceMuted,
+      backgroundColor: 'rgba(0,0,0,0.08)',
       marginRight: 8,
+      borderWidth: 1,
+      borderColor: theme.glass.border,
     },
     saveBtn: {
       backgroundColor: theme.colors.primary,
@@ -534,15 +553,18 @@ function createStyles(theme: AppTheme) {
       marginTop: 8,
       marginBottom: 8,
     },
-    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    savingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 32 },
+    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '500' },
+    savingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 32 },
     savingsSheet: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 20,
+      backgroundColor: theme.glass.background,
+      borderColor: theme.glass.border,
+      borderWidth: 1,
+      borderRadius: 24,
       padding: 24,
       ...theme.shadow.card,
+      overflow: 'hidden',
     },
-    savingsTitle: { fontSize: 17, fontWeight: '700', color: theme.colors.text, marginBottom: 16 },
+    savingsTitle: { fontSize: 17, fontWeight: '500', color: theme.colors.text, marginBottom: 16 },
     savingsButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
     savingsCancelBtn: {
       flex: 1,

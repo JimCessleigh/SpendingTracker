@@ -18,7 +18,7 @@ export default function PockytLogo({ variant = 'full', width = 220 }: Props) {
     if (variant === 'spending') source = require('../../assets/logo_mascot_spending.png');
 
     return (
-      <View style={[styles.mascotShadowWrap, { width, height: width }]}>
+      <View style={{ width, height: width }}>
         <Image
           style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
           source={source}
@@ -35,7 +35,7 @@ export default function PockytLogo({ variant = 'full', width = 220 }: Props) {
     <View style={{ width, height, flexDirection: 'row', alignItems: 'center' }}>
       
       {/* Dynamic Drop Shadow Wrapper for the Character */}
-      <View style={[styles.mascotShadowWrap, { width: mascotBoundingSize, height: mascotBoundingSize, marginRight: 14 }]}>
+      <View style={{ width: mascotBoundingSize, height: mascotBoundingSize, marginRight: 14 }}>
         <Image
           style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
           source={require('../../assets/logo_mascot.png')}
@@ -46,18 +46,18 @@ export default function PockytLogo({ variant = 'full', width = 220 }: Props) {
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text style={{ 
           fontSize: height * 0.44, 
-          fontWeight: '800', 
+          fontWeight: '300', 
           color: theme.colors.text, 
-          letterSpacing: -0.5, 
-          lineHeight: height * 0.52 
+          letterSpacing: 1, 
+          lineHeight: height * 0.52,
         }}>
           Pockyt
         </Text>
         <Text style={{ 
-          fontSize: height * 0.16, 
-          fontWeight: '700', 
-          color: theme.colors.primary, 
-          letterSpacing: 2,
+          fontSize: height * 0.14, 
+          fontWeight: '500', 
+          color: theme.colors.textMuted, 
+          letterSpacing: 3,
           marginTop: 2
         }}>
           SPENDING TRACKER
@@ -67,12 +67,4 @@ export default function PockytLogo({ variant = 'full', width = 220 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  mascotShadowWrap: {
-    shadowColor: '#1C2638',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    elevation: 8, // for Android
-  }
-});
+const styles = StyleSheet.create({});
